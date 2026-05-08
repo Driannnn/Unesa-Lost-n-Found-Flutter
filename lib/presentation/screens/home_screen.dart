@@ -87,42 +87,68 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    Stack(
-                      clipBehavior: Clip.none,
+                    Row(
                       children: [
-                        CircleAvatar(
-                          radius: 22,
-                          backgroundColor: AppColors.unesaGold,
-                          child: const Text(
-                            'B',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.unesaBlue,
+                        // Logout button
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.logout, size: 16, color: Colors.white.withOpacity(0.8)),
+                                const SizedBox(width: 4),
+                                Text('Keluar', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8))),
+                              ],
                             ),
                           ),
                         ),
-                        Positioned(
-                          top: -2,
-                          right: -2,
-                          child: Container(
-                            width: 16,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: AppColors.danger,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.unesaBlue, width: 2),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              '2',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                        const SizedBox(width: 12),
+                        // Avatar
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: AppColors.unesaGold,
+                              child: const Text(
+                                'B',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.unesaBlue,
+                                ),
                               ),
                             ),
-                          ),
+                            Positioned(
+                              top: -2,
+                              right: -2,
+                              child: Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: AppColors.danger,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.unesaBlue, width: 2),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  '2',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
