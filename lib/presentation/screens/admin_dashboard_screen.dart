@@ -1,0 +1,398 @@
+import 'package:flutter/material.dart';
+import '../widgets/app_colors.dart';
+
+/// Admin dashboard with Overview, Claims, and Announcements tabs.
+class AdminDashboardScreen extends StatefulWidget {
+  const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  String _activeTab = 'overview';
+  String _claimFilter = 'all';
+
+  final _claims = [
+    {'id': 'l1', 'title': 'Dompet Coklat', 'category': 'Dompet', 'reporter': 'Budi Santoso', 'nim': '21051204011', 'location': 'Gedung A Lt. 2', 'time': '2 jam lalu', 'score': 95, 'status': 'pending', 'desc': 'Dompet kulit coklat merk Fossil, berisi KTM dan kartu ATM BRI'},
+    {'id': 'l2', 'title': 'Laptop Asus VivoBook', 'category': 'Laptop', 'reporter': 'Siti Rahayu', 'nim': '22051204033', 'location': 'Perpustakaan', 'time': '5 jam lalu', 'score': 88, 'status': 'pending', 'desc': 'Laptop Asus VivoBook S14 warna biru navy, ada stiker UNESA'},
+    {'id': 'l3', 'title': 'Kunci Motor Honda', 'category': 'Kunci', 'reporter': 'Ahmad Fauzi', 'nim': '23051204055', 'location': 'Parkiran Motor', 'time': 'Kemarin', 'score': 91, 'status': 'approved', 'desc': 'Kunci motor Honda Vario merah, ada remote alarm'},
+    {'id': 'l5', 'title': 'KTM Mahasiswa', 'category': 'Dokumen', 'reporter': 'Rizky Pratama', 'nim': '24051204099', 'location': 'Masjid Kampus', 'time': '3 hari lalu', 'score': 100, 'status': 'on_hold', 'desc': 'KTM atas nama Rizky Pratama Prodi Teknik Informatika'},
+  ];
+
+  final _announcements = [
+    {'id': 'ann1', 'title': 'Penemuan Dompet di Perpustakaan', 'body': 'Telah ditemukan sebuah dompet warna hitam di area perpustakaan lantai 1.', 'type': 'found', 'author': 'Satpam A. Wibowo', 'date': 'Hari ini, 08:30', 'pinned': true, 'active': true},
+    {'id': 'ann2', 'title': 'Zona Rawan Kehilangan: Kantin', 'body': 'Tingkat kehilangan barang di area kantin meningkat minggu ini.', 'type': 'warning', 'author': 'Admin IT', 'date': 'Kemarin, 14:00', 'pinned': true, 'active': true},
+    {'id': 'ann3', 'title': 'Prosedur Pengambilan Barang', 'body': 'Pengambilan barang hilang wajib disertai KTM asli dan deskripsi barang.', 'type': 'info', 'author': 'Koordinator', 'date': '3 hari lalu', 'pinned': false, 'active': true},
+  ];
+
+  static const _emojis = {'Dompet': '👛', 'Laptop': '💻', 'Kunci': '🔑', 'Dokumen': '📄'};
+  static const _statusCfg = {
+    'pending': {'label': 'Menunggu', 'color': 0xFFFFB81C, 'bg': 0xFFFFF8E6},
+    'approved': {'label': 'Disetujui', 'color': 0xFF34C759, 'bg': 0xFFE8F9EE},
+    'rejected': {'label': 'Ditolak', 'color': 0xFFFF3B30, 'bg': 0xFFFFE8E6},
+    'on_hold': {'label': 'Ditahan', 'color': 0xFF007AFF, 'bg': 0xFFE6F2FF},
+  };
+  static const _annTypeCfg = {
+    'info': {'label': 'Info', 'color': 0xFF007AFF, 'icon': Icons.info},
+    'warning': {'label': 'Peringatan', 'color': 0xFFFF9500, 'icon': Icons.warning},
+    'found': {'label': 'Barang Temuan', 'color': 0xFF34C759, 'icon': Icons.inventory_2},
+    'event': {'label': 'Acara', 'color': 0xFF003366, 'icon': Icons.event},
+  };
+
+  int get _pendingCount => _claims.where((c) => c['status'] == 'pending').length;
+  int get _approvedCount => _claims.where((c) => c['status'] == 'approved').length;
+
+  List<Map<String, dynamic>> get _filteredClaims =>
+      _claimFilter == 'all' ? _claims : _claims.where((c) => c['status'] == _claimFilter).toList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bgLight,
+      body: Column(
+        children: [
+          // Header
+          Container(
+            decoration: const BoxDecoration(gradient: AppColors.primaryGradient, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 12)]),
+            padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40, height: 40,
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]),
+                      child: const Center(child: Text('🎓', style: TextStyle(fontSize: 20))),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: const [
+                            Text('A. Wibowo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                            SizedBox(width: 4),
+                            Icon(Icons.shield, size: 16, color: AppColors.unesaGold),
+                          ]),
+                          Text('Portal Admin · PSDKU Magetan', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pushReplacementNamed(context, '/'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                        child: Row(children: [
+                          Icon(Icons.logout, size: 16, color: Colors.white.withOpacity(0.8)),
+                          const SizedBox(width: 4),
+                          Text('Keluar', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8))),
+                        ]),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Tabs
+                Row(
+                  children: [
+                    _headerTab('overview', 'Ringkasan', Icons.shield, null),
+                    _headerTab('claims', 'Klaim', Icons.inventory_2, _pendingCount),
+                    _headerTab('announcements', 'Pengumuman', Icons.campaign, _announcements.where((a) => a['active'] == true).length),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Content
+          Expanded(
+            child: _activeTab == 'overview' ? _overviewTab() : _activeTab == 'claims' ? _claimsTab() : _announcementsTab(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _headerTab(String id, String label, IconData icon, int? badge) {
+    final isActive = _activeTab == id;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _activeTab = id),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.bgLight : Colors.transparent,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+          ),
+          child: Column(
+            children: [
+              Stack(clipBehavior: Clip.none, children: [
+                Icon(icon, size: 16, color: isActive ? AppColors.unesaBlue : Colors.white60),
+                if (badge != null && badge > 0)
+                  Positioned(top: -6, right: -8, child: Container(
+                    width: 16, height: 16, decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: Text('$badge', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+                  )),
+              ]),
+              const SizedBox(height: 4),
+              Text(label, style: TextStyle(fontSize: 12, fontWeight: isActive ? FontWeight.w700 : FontWeight.w400, color: isActive ? AppColors.unesaBlue : Colors.white60)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Overview Tab ──
+  Widget _overviewTab() {
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      // Greeting
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppColors.unesaBlue, Color(0xFF004488)]), borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Selamat bertugas,', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7))),
+          const Text('A. Wibowo 👮', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+          const SizedBox(height: 12),
+          Row(children: [
+            _miniStat('Klaim Pending', '$_pendingCount', AppColors.unesaGold),
+            const SizedBox(width: 8),
+            _miniStat('Disetujui', '$_approvedCount', AppColors.success),
+            const SizedBox(width: 8),
+            _miniStat('Pengumuman', '${_announcements.where((a) => a['active'] == true).length}', Colors.white),
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 16),
+      // KPI grid
+      GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.8, children: [
+        _kpiTile('Total Laporan', '11', Icons.inventory_2, AppColors.unesaBlue, AppColors.unesaLightBlue),
+        _kpiTile('Berhasil Kembali', '$_approvedCount', Icons.trending_up, AppColors.success, AppColors.foundBgLight),
+        _kpiTile('Klaim Ditahan', '1', Icons.error_outline, AppColors.infoBadge, AppColors.unesaLightBlue),
+        _kpiTile('Klaim Ditolak', '0', Icons.cancel, AppColors.danger, AppColors.lostBgLight),
+      ]),
+      const SizedBox(height: 16),
+      // Pending preview
+      if (_pendingCount > 0) ...[
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('Klaim Menunggu Tindakan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.unesaBlue)),
+          GestureDetector(onTap: () => setState(() => _activeTab = 'claims'), child: const Text('Lihat Semua', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.unesaGold))),
+        ]),
+        const SizedBox(height: 8),
+        ..._claims.where((c) => c['status'] == 'pending').take(2).map((c) => _claimCard(c)),
+      ],
+    ]);
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Expanded(child: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+      child: Column(children: [
+        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color)),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.6)), textAlign: TextAlign.center),
+      ]),
+    ));
+  }
+
+  Widget _kpiTile(String label, String value, IconData icon, Color color, Color bg) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))]),
+      child: Row(children: [
+        Container(width: 40, height: 40, decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 20, color: color)),
+        const SizedBox(width: 12),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: color)),
+          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+        ]),
+      ]),
+    );
+  }
+
+  // ── Claims Tab ──
+  Widget _claimsTab() {
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      // Filter chips
+      SizedBox(height: 32, child: ListView(scrollDirection: Axis.horizontal, children: [
+        _chipBtn('all', 'Semua (${_claims.length})'),
+        _chipBtn('pending', 'Pending ($_pendingCount)'),
+        _chipBtn('approved', 'Disetujui ($_approvedCount)'),
+        _chipBtn('on_hold', 'Ditahan (1)'),
+        _chipBtn('rejected', 'Ditolak (0)'),
+      ])),
+      const SizedBox(height: 12),
+      if (_filteredClaims.isEmpty)
+        const Padding(padding: EdgeInsets.symmetric(vertical: 48), child: Column(children: [
+          Icon(Icons.inventory_2, size: 40, color: AppColors.lightMuted),
+          SizedBox(height: 12),
+          Text('Tidak ada klaim ditemukan', style: TextStyle(fontSize: 14, color: AppColors.mutedText)),
+        ]))
+      else
+        ..._filteredClaims.map((c) => _claimCard(c)),
+    ]);
+  }
+
+  Widget _chipBtn(String value, String label) {
+    final active = _claimFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () => setState(() => _claimFilter = value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: active ? AppColors.unesaBlue : Colors.white,
+            borderRadius: BorderRadius.circular(99),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+          ),
+          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: active ? FontWeight.w600 : FontWeight.w400, color: active ? Colors.white : AppColors.mutedText)),
+        ),
+      ),
+    );
+  }
+
+  Widget _claimCard(Map<String, dynamic> claim) {
+    final s = _statusCfg[claim['status'] as String]!;
+    final emoji = _emojis[claim['category'] as String] ?? '📦';
+    final score = claim['score'] as int;
+    final scoreColor = score >= 90 ? AppColors.success : score >= 70 ? AppColors.unesaGold : AppColors.danger;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))]),
+      child: Column(children: [
+        // Score bar
+        Container(height: 4, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: const BorderRadius.vertical(top: Radius.circular(12))),
+          child: Align(alignment: Alignment.centerLeft, child: FractionallySizedBox(widthFactor: score / 100, child: Container(decoration: BoxDecoration(color: scoreColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(12))))))),
+        Padding(padding: const EdgeInsets.all(16), child: Column(children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(width: 64, height: 64, decoration: BoxDecoration(color: AppColors.bgLight, borderRadius: BorderRadius.circular(12)), alignment: Alignment.center, child: Text(emoji, style: const TextStyle(fontSize: 24))),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(claim['title'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Color(s['bg'] as int), borderRadius: BorderRadius.circular(99)),
+                  child: Text(s['label'] as String, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(s['color'] as int)))),
+              ]),
+              const SizedBox(height: 4),
+              Row(children: [const Icon(Icons.person, size: 12, color: AppColors.mutedText), const SizedBox(width: 4), Text('${claim['reporter']} · ${claim['nim']}', style: const TextStyle(fontSize: 12, color: AppColors.mutedText), overflow: TextOverflow.ellipsis)]),
+              const SizedBox(height: 2),
+              Row(children: [const Icon(Icons.location_on, size: 12, color: AppColors.mutedText), const SizedBox(width: 4), Text(claim['location'] as String, style: const TextStyle(fontSize: 12, color: AppColors.mutedText))]),
+              const SizedBox(height: 2),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text(claim['time'] as String, style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+                Text('AI $score%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: scoreColor)),
+              ]),
+            ])),
+          ]),
+          if (claim['status'] == 'pending') ...[
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: SizedBox(height: 36, child: ElevatedButton(onPressed: () => setState(() { (claim as Map)['status'] = 'approved'; }), style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: EdgeInsets.zero), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.check, size: 14), SizedBox(width: 4), Text('Setujui', style: TextStyle(fontSize: 12))])))),
+              const SizedBox(width: 8),
+              Expanded(child: SizedBox(height: 36, child: ElevatedButton(onPressed: () => setState(() { (claim as Map)['status'] = 'on_hold'; }), style: ElevatedButton.styleFrom(backgroundColor: AppColors.unesaGold, foregroundColor: AppColors.unesaBlue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: EdgeInsets.zero), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.pause, size: 14), SizedBox(width: 4), Text('Tahan', style: TextStyle(fontSize: 12))])))),
+              const SizedBox(width: 8),
+              Expanded(child: SizedBox(height: 36, child: ElevatedButton(onPressed: () => setState(() { (claim as Map)['status'] = 'rejected'; }), style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: EdgeInsets.zero), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.close, size: 14), SizedBox(width: 4), Text('Tolak', style: TextStyle(fontSize: 12))])))),
+            ]),
+          ],
+          if (claim['status'] == 'approved' || claim['status'] == 'rejected')
+            Container(
+              margin: const EdgeInsets.only(top: 12), padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(color: Color(s['bg'] as int), borderRadius: BorderRadius.circular(8)),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(claim['status'] == 'approved' ? Icons.check_circle : Icons.cancel, size: 14, color: Color(s['color'] as int)),
+                const SizedBox(width: 6),
+                Text('Klaim telah ${(s['label'] as String).toLowerCase()}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(s['color'] as int))),
+              ]),
+            ),
+        ])),
+      ]),
+    );
+  }
+
+  // ── Announcements Tab ──
+  Widget _announcementsTab() {
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      // Stats
+      Row(children: [
+        _annStat('Aktif', _announcements.where((a) => a['active'] == true).length, AppColors.success),
+        const SizedBox(width: 8),
+        _annStat('Disematkan', _announcements.where((a) => a['pinned'] == true).length, AppColors.unesaGold),
+        const SizedBox(width: 8),
+        _annStat('Nonaktif', _announcements.where((a) => a['active'] != true).length, AppColors.lightMuted),
+      ]),
+      const SizedBox(height: 12),
+      ..._announcements.map((ann) => _announcementCard(ann)),
+    ]);
+  }
+
+  Widget _annStat(String label, int value, Color color) {
+    return Expanded(child: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))]),
+      child: Column(children: [
+        Text('$value', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color)),
+        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+      ]),
+    ));
+  }
+
+  Widget _announcementCard(Map<String, dynamic> ann) {
+    final cfg = _annTypeCfg[ann['type'] as String]!;
+    final color = Color(cfg['color'] as int);
+    final isActive = ann['active'] == true;
+    final isPinned = ann['pinned'] == true;
+
+    return Opacity(
+      opacity: isActive ? 1.0 : 0.55,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))]),
+        child: Column(children: [
+          Container(height: 4, decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(12)))),
+          Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(width: 36, height: 36, decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(cfg['icon'] as IconData, size: 16, color: color)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  if (isPinned) ...[const Icon(Icons.push_pin, size: 12, color: AppColors.unesaGold), const SizedBox(width: 4)],
+                  Expanded(child: Text(ann['title'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                ]),
+                const SizedBox(height: 4),
+                Text(ann['body'] as String, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+                const SizedBox(height: 4),
+                Text('oleh ${ann['author']} · ${ann['date']}', style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+              ])),
+            ]),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            Row(children: [
+              _annAction(isPinned ? Icons.push_pin : Icons.push_pin_outlined, isPinned ? 'Unpin' : 'Pin', isPinned ? AppColors.unesaGold : AppColors.lightMuted, isPinned ? AppColors.goldBgLight : AppColors.bgLight),
+              const SizedBox(width: 8),
+              _annAction(Icons.visibility, isActive ? 'Nonaktifkan' : 'Aktifkan', isActive ? AppColors.lightMuted : AppColors.success, isActive ? AppColors.bgLight : AppColors.foundBgLight),
+            ]),
+          ])),
+        ]),
+      ),
+    );
+  }
+
+  Widget _annAction(IconData icon, String label, Color color, Color bg) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: color)),
+      ]),
+    );
+  }
+}
