@@ -1,3 +1,4 @@
+import 'dart:convert'; // WAJIB DITAMBAHKAN untuk menerjemahkan Base64
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
@@ -13,6 +14,9 @@ class ItemCardWidget extends StatelessWidget {
   final bool hasMatch;
   final String? claimStatus;
   final VoidCallback? onTap;
+  
+  // 1. TAMBAHKAN VARIABEL BARU UNTUK MENERIMA FOTO BASE64
+  final String? imageBase64; 
 
   const ItemCardWidget({
     super.key,
@@ -26,6 +30,7 @@ class ItemCardWidget extends StatelessWidget {
     this.hasMatch = false,
     this.claimStatus,
     this.onTap,
+    this.imageBase64, // 2. Daftarkan variabelnya di sini
   });
 
   @override
@@ -61,9 +66,25 @@ class ItemCardWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   alignment: Alignment.center,
-                  child: Text(
-                    emoji ?? '📦',
-                    style: const TextStyle(fontSize: 30),
+                  // 3. LOGIKA CERDAS: Jika ada foto, tampilkan foto. Jika tidak, tampilkan emoji.
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: (imageBase64 != null && imageBase64!.isNotEmpty)
+                        ? Image.memory(
+                            base64Decode(imageBase64!), // Mengubah teks kembali menjadi gambar
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover, // Gambar memenuhi kotak tanpa gepeng
+                            // Jika terjadi error saat memuat gambar, kembalikan ke icon kardus
+                            errorBuilder: (context, error, stackTrace) => Text(
+                              emoji ?? '📦',
+                              style: const TextStyle(fontSize: 30),
+                            ),
+                          )
+                        : Text(
+                            emoji ?? '📦',
+                            style: const TextStyle(fontSize: 30),
+                          ),
                   ),
                 ),
                 if (matchScore != null)
@@ -150,8 +171,8 @@ class ItemCardWidget extends StatelessWidget {
                     ],
                   ),
                   if (hasMatch)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 6),
                       child: Text(
                         '✨ AI menemukan kecocokan • Tap untuk lihat',
                         style: TextStyle(

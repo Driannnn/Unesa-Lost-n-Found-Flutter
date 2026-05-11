@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // WAJIB DITAMBAHKAN
+import 'package:firebase_auth/firebase_auth.dart'; // Untuk fitur Logout
 import '../widgets/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/item_card_widget.dart';
@@ -16,32 +18,30 @@ class _HomeScreenState extends State<HomeScreen> {
   String _filter = 'all'; // all | lost | found
   final _searchController = TextEditingController();
 
-  // Dummy data
+  // Instance Firestore
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late Stream<QuerySnapshot> _reportsStream;
   static const _categoryIcons = {
-    'Dompet': '👛', 'Tas': '🎒', 'Kunci': '🔑', 'Handphone': '📱',
-    'Laptop': '💻', 'Kacamata': '👓', 'Payung': '☂️', 'Alat Tulis': '✏️',
-    'Dokumen': '📄', 'Lainnya': '📦',
+    'Dompet': '👛',
+    'Tas': '🎒',
+    'Kunci': '🔑',
+    'Handphone': '📱',
+    'Laptop': '💻',
+    'Kacamata': '👓',
+    'Payung': '☂️',
+    'Alat Tulis': '✏️',
+    'Dokumen': '📄',
+    'Lainnya': '📦',
   };
 
-  final _items = const [
-    {'id': 'l1', 'title': 'Dompet Coklat', 'category': 'Dompet', 'status': 'lost', 'location': 'Gedung A Lt. 2', 'time': '2 jam lalu', 'matchScore': 95, 'hasMatch': true, 'claim': 'pending'},
-    {'id': 'l2', 'title': 'Laptop Asus VivoBook', 'category': 'Laptop', 'status': 'lost', 'location': 'Perpustakaan', 'time': '5 jam lalu', 'matchScore': 88, 'hasMatch': true, 'claim': 'pending'},
-    {'id': 'l3', 'title': 'Kunci Motor Honda', 'category': 'Kunci', 'status': 'lost', 'location': 'Parkiran Motor', 'time': 'Kemarin', 'matchScore': 91, 'hasMatch': true, 'claim': 'approved'},
-    {'id': 'l4', 'title': 'Kacamata Hitam', 'category': 'Kacamata', 'status': 'lost', 'location': 'Lapangan', 'time': 'Kemarin', 'matchScore': null, 'hasMatch': false, 'claim': null},
-    {'id': 'f1', 'title': 'Dompet Kulit Coklat', 'category': 'Dompet', 'status': 'found', 'location': 'Gedung A Lt. 2', 'time': '3 jam lalu', 'matchScore': 95, 'hasMatch': true, 'claim': null},
-    {'id': 'f5', 'title': 'Payung Biru', 'category': 'Payung', 'status': 'found', 'location': 'Kantin', 'time': '1 hari lalu', 'matchScore': null, 'hasMatch': false, 'claim': null},
-    {'id': 'f6', 'title': 'Tas Ransel Hitam', 'category': 'Tas', 'status': 'found', 'location': 'Perpustakaan', 'time': '1 hari lalu', 'matchScore': null, 'hasMatch': false, 'claim': null},
-  ];
-
-  List<Map<String, dynamic>> get _filteredItems {
-    return _items.where((item) {
-      final matchFilter = _filter == 'all' || item['status'] == _filter;
-      final query = _searchController.text.toLowerCase();
-      final matchSearch = query.isEmpty ||
-          (item['title'] as String).toLowerCase().contains(query) ||
-          (item['category'] as String).toLowerCase().contains(query);
-      return matchFilter && matchSearch;
-    }).toList();
+  @override
+  void initState() {
+    super.initState();
+    // Menyalakan stream satu kali saja saat layar pertama kali dimuat
+    _reportsStream = _firestore
+        .collection('reports')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 
   @override
@@ -50,8 +50,26 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  // Fungsi sederhana untuk mengubah tanggal Firestore menjadi teks (contoh: "2 jam lalu")
+  String _formatTimeAgo(Timestamp? timestamp) {
+    if (timestamp == null) return 'Baru saja';
+    final now = DateTime.now();
+    final date = timestamp.toDate();
+    final diff = now.difference(date);
+
+    if (diff.inDays > 0) return '${diff.inDays} hari lalu';
+    if (diff.inHours > 0) return '${diff.inHours} jam lalu';
+    if (diff.inMinutes > 0) return '${diff.inMinutes} menit lalu';
+    return 'Baru saja';
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Ambil inisial nama user yang sedang login untuk Avatar
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final userName = currentUser?.email?.split('@')[0] ?? 'Mahasiswa';
+    final initial = userName.isNotEmpty ? userName[0].toUpperCase() : 'M';
+
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       body: Column(
@@ -71,8 +89,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
+                      children: [
+                        const Text(
                           'Lost & Found',
                           style: TextStyle(
                             fontSize: 20,
@@ -80,75 +98,68 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Colors.white,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          'Halo, Budi 👋',
-                          style: TextStyle(fontSize: 14, color: Colors.white70),
+                          'Halo, $userName 👋',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
                         ),
                       ],
                     ),
                     Row(
                       children: [
-                        // Logout button
                         GestureDetector(
-                          onTap: () {
-                            Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                          onTap: () async {
+                            await FirebaseAuth.instance.signOut();
+                            if (mounted)
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                '/',
+                                (route) => false,
+                              );
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.logout, size: 16, color: Colors.white.withOpacity(0.8)),
+                                Icon(
+                                  Icons.logout,
+                                  size: 16,
+                                  color: Colors.white.withOpacity(0.8),
+                                ),
                                 const SizedBox(width: 4),
-                                Text('Keluar', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8))),
+                                Text(
+                                  'Keluar',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
-                        // Avatar
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            CircleAvatar(
-                              radius: 22,
-                              backgroundColor: AppColors.unesaGold,
-                              child: const Text(
-                                'B',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.unesaBlue,
-                                ),
-                              ),
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: AppColors.unesaGold,
+                          child: Text(
+                            initial,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.unesaBlue,
                             ),
-                            Positioned(
-                              top: -2,
-                              right: -2,
-                              child: Container(
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: AppColors.danger,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.unesaBlue, width: 2),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  '2',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -157,7 +168,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 // Search bar
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -167,7 +181,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.search, size: 16, color: AppColors.mutedText),
+                      const Icon(
+                        Icons.search,
+                        size: 16,
+                        color: AppColors.mutedText,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -175,7 +193,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           onChanged: (_) => setState(() {}),
                           decoration: const InputDecoration.collapsed(
                             hintText: 'Cari barang hilang atau temuan...',
-                            hintStyle: TextStyle(fontSize: 14, color: AppColors.mutedText),
+                            hintStyle: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.mutedText,
+                            ),
                           ),
                           style: const TextStyle(fontSize: 14),
                         ),
@@ -186,7 +207,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             _searchController.clear();
                             setState(() {});
                           },
-                          child: const Icon(Icons.close, size: 16, color: AppColors.mutedText),
+                          child: const Icon(
+                            Icons.close,
+                            size: 16,
+                            color: AppColors.mutedText,
+                          ),
                         ),
                     ],
                   ),
@@ -195,176 +220,296 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ── Content ──
+          // ── Content Menggunakan StreamBuilder ──
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-              children: [
-                // Announcement banners
-                _announcementBanner('Penemuan Dompet di Perpustakaan',
-                    'Pemilik dapat menghubungi pos keamanan...'),
-                const SizedBox(height: 8),
-                _announcementBanner('Zona Rawan Kehilangan: Kantin',
-                    'Harap selalu menjaga barang bawaan...'),
-                const SizedBox(height: 16),
+            child: StreamBuilder<QuerySnapshot>(
+              // Mengambil data dari koleksi 'reports', diurutkan dari yang terbaru
+              stream: _reportsStream,
+              builder: (context, snapshot) {
+                // 1. Loading State
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                // Quick actions
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 8),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Laporkan Barang',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.unesaBlue,
-                        ),
+                // 2. Error State
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Terjadi kesalahan: ${snapshot.error}'),
+                  );
+                }
+
+                // Ambil semua dokumen dari database
+                final docs = snapshot.data?.docs ?? [];
+
+                // Hitung Statistik Otomatis
+                int lostCount = docs
+                    .where((doc) => doc['isLost'] == true)
+                    .length;
+                int foundCount = docs
+                    .where((doc) => doc['isLost'] == false)
+                    .length;
+                int resolvedCount = docs
+                    .where((doc) => doc['status'] == 'Resolved')
+                    .length;
+
+                // Proses Filter & Pencarian
+                final filteredDocs = docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final bool isLost = data['isLost'] ?? true;
+                  final String statusString = isLost ? 'lost' : 'found';
+
+                  final matchFilter =
+                      _filter == 'all' || statusString == _filter;
+                  final query = _searchController.text.toLowerCase();
+                  final title = (data['title'] ?? '').toString().toLowerCase();
+                  final category = (data['category'] ?? '')
+                      .toString()
+                      .toLowerCase();
+
+                  final matchSearch =
+                      query.isEmpty ||
+                      title.contains(query) ||
+                      category.contains(query);
+
+                  return matchFilter && matchSearch;
+                }).toList();
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  children: [
+                    _announcementBanner(
+                      'Sistem Terhubung',
+                      'Database Firebase aktif secara Real-time.',
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Quick actions (Tombol Lapor)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 8),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 80,
-                              child: ElevatedButton(
-                                onPressed: () => Navigator.pushNamed(context, '/report-lost'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.danger,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(Icons.error_outline, size: 28),
-                                    SizedBox(height: 4),
-                                    Text('Barang Hilang', style: TextStyle(fontSize: 14)),
-                                  ],
-                                ),
-                              ),
+                          const Text(
+                            'Laporkan Barang',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.unesaBlue,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SizedBox(
-                              height: 80,
-                              child: ElevatedButton(
-                                onPressed: () => Navigator.pushNamed(context, '/report-found'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.success,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SizedBox(
+                                  height: 80,
+                                  child: ElevatedButton(
+                                    onPressed: () => Navigator.pushNamed(
+                                      context,
+                                      '/report-lost',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.danger,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: const [
+                                        Icon(Icons.error_outline, size: 28),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Barang Hilang',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(Icons.add_box_outlined, size: 28),
-                                    SizedBox(height: 4),
-                                    Text('Barang Temuan', style: TextStyle(fontSize: 14)),
-                                  ],
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: SizedBox(
+                                  height: 80,
+                                  child: ElevatedButton(
+                                    onPressed: () => Navigator.pushNamed(
+                                      context,
+                                      '/report-found',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.success,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: const [
+                                        Icon(Icons.add_box_outlined, size: 28),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Barang Temuan',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
+                    ),
+                    const SizedBox(height: 20),
 
-                // Statistics
-                const Text(
-                  'Statistik',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.unesaBlue),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: const [
-                    Expanded(child: StatCardWidget(icon: Icons.error_outline, value: '4', label: 'Barang Hilang', color: AppColors.danger)),
-                    SizedBox(width: 12),
-                    Expanded(child: StatCardWidget(icon: Icons.add_box_outlined, value: '6', label: 'Barang Temuan', color: AppColors.success)),
-                    SizedBox(width: 12),
-                    Expanded(child: StatCardWidget(icon: Icons.trending_up, value: '1', label: 'Berhasil Kembali', color: AppColors.unesaGold)),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Filter tabs
-                Row(
-                  children: [
-                    _filterChip('all', 'Semua'),
-                    const SizedBox(width: 8),
-                    _filterChip('lost', 'Hilang'),
-                    const SizedBox(width: 8),
-                    _filterChip('found', 'Temuan'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Feed header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _searchController.text.isNotEmpty
-                          ? 'Hasil Pencarian "${_searchController.text}"'
-                          : 'Laporan Terbaru',
-                      style: const TextStyle(
+                    // Statistics (Angka otomatis dari database)
+                    const Text(
+                      'Statistik',
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: AppColors.unesaBlue,
                       ),
                     ),
-                    Text(
-                      '${_filteredItems.length} item',
-                      style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Items
-                if (_filteredItems.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Column(
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        Text('🔍', style: TextStyle(fontSize: 40)),
-                        SizedBox(height: 12),
-                        Text('Tidak ada item ditemukan',
-                            style: TextStyle(fontSize: 14, color: AppColors.mutedText)),
+                        Expanded(
+                          child: StatCardWidget(
+                            icon: Icons.error_outline,
+                            value: lostCount.toString(),
+                            label: 'Barang Hilang',
+                            color: AppColors.danger,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: StatCardWidget(
+                            icon: Icons.add_box_outlined,
+                            value: foundCount.toString(),
+                            label: 'Barang Temuan',
+                            color: AppColors.success,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: StatCardWidget(
+                            icon: Icons.trending_up,
+                            value: resolvedCount.toString(),
+                            label: 'Berhasil Kembali',
+                            color: AppColors.unesaGold,
+                          ),
+                        ),
                       ],
                     ),
-                  )
-                else
-                  ..._filteredItems.map((item) => ItemCardWidget(
-                        title: item['title'] as String,
-                        category: item['category'] as String,
-                        location: item['location'] as String,
-                        timeAgo: item['time'] as String,
-                        status: item['status'] as String,
-                        emoji: _categoryIcons[item['category'] as String],
-                        matchScore: item['matchScore'] as int?,
-                        hasMatch: item['hasMatch'] as bool,
-                        claimStatus: item['claim'] as String?,
-                        onTap: (item['hasMatch'] as bool)
-                            ? () => Navigator.pushNamed(context, '/match-details')
-                            : null,
-                      )),
-                const SizedBox(height: 16),
-              ],
+                    const SizedBox(height: 20),
+
+                    // Filter tabs
+                    Row(
+                      children: [
+                        _filterChip('all', 'Semua'),
+                        const SizedBox(width: 8),
+                        _filterChip('lost', 'Hilang'),
+                        const SizedBox(width: 8),
+                        _filterChip('found', 'Temuan'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Feed header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _searchController.text.isNotEmpty
+                              ? 'Hasil Pencarian "${_searchController.text}"'
+                              : 'Laporan Terbaru',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.unesaBlue,
+                          ),
+                        ),
+                        Text(
+                          '${filteredDocs.length} item',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.mutedText,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Menampilkan Data dari Firestore
+                    if (filteredDocs.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 48),
+                        child: Column(
+                          children: [
+                            Text('🔍', style: TextStyle(fontSize: 40)),
+                            SizedBox(height: 12),
+                            Text(
+                              'Belum ada laporan',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.mutedText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...filteredDocs.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final category = data['category'] ?? 'Lainnya';
+
+return ItemCardWidget(
+  title: data['title'] ?? 'Tanpa Nama',
+  category: category,
+  location: data['location'] ?? '-',
+  timeAgo: _formatTimeAgo(data['createdAt'] as Timestamp?),
+  status: (data['isLost'] ?? true) ? 'lost' : 'found',
+  emoji: _categoryIcons[category] ?? '📦',
+  imageBase64: data['imageBase64'], 
+  
+  // 👇 UBAH BAGIAN ONTAP MENJADI INI 👇
+  onTap: () {
+    Navigator.pushNamed(
+      context, 
+      '/match-details',
+      arguments: {
+        'title': data['title'],
+        'category': data['category'],
+        'description': data['description'],
+        'location': data['location'],
+        'date': data['date'],
+        'imageBase64': data['imageBase64'],
+        'status': (data['isLost'] ?? true) ? 'lost' : 'found',
+        'reporterNim': data['reporterNim'],
+      },
+    );
+  },
+  
+  // Data dummy matchScore bisa kita kosongkan dulu atau set default
+  matchScore: null,
+  hasMatch: false,
+);
+                      }),
+                    const SizedBox(height: 16),
+                  ],
+                );
+              },
             ),
           ),
 
@@ -420,16 +565,23 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.unesaBlue,
-                    )),
-                Text(body,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.unesaBlue,
+                  ),
+                ),
+                Text(
+                  body,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.mutedText,
+                  ),
+                ),
               ],
             ),
           ),
