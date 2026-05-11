@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "854277919262",
+    "project_id": "unesa-lost-and-found",
+    "storage_bucket": "unesa-lost-and-found.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:854277919262:android:aea270f9f405d87d66540f",
+        "android_client_info": {
+          "package_name": "Unesa.lostnfound_"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8NPsY5w_VCF-T1Lo1r6Amj3AE5mcyCTA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lostnfoundunesa5/data/service/auth.service.dart';
 import '../widgets/app_colors.dart';
 
 /// Login screen with SSO button and manual NIM login.
@@ -11,8 +12,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _showManual = false;
-  final _nimController = TextEditingController();
-  final _passwordController = TextEditingController();
+  
+  // Deklarasi ganda dihapus agar tidak error
+  final TextEditingController _nimController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -125,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // SSO Button
+                    // SSO Button (Tetap statis untuk sementara)
                     SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -219,10 +223,49 @@ class _LoginScreenState extends State<LoginScreen> {
                             SizedBox(
                               width: double.infinity,
                               height: 40,
+                              // LOGIKA AUTHENTICATION DITAMBAHKAN DI SINI
                               child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pushReplacementNamed(context, '/home');
-                                },
+onPressed: () async {
+  String nim = _nimController.text.trim();
+  String password = _passwordController.text.trim();
+
+  print("1. Tombol Masuk Ditekan!"); // <--- Tambahkan ini
+  print("NIM: $nim, Password: $password"); // <--- Tambahkan ini
+
+  if (nim.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Harap isi semua kolom!")),
+    );
+    return;
+  }
+
+  try {
+    print("2. Mulai menghubungi Firebase..."); // <--- Tambahkan ini
+    final user = await _authService.loginWithNIM(nim, password);
+    
+    if (user != null && mounted) {
+      print("3. Login Berhasil!"); // <--- Tambahkan ini
+      Navigator.pushReplacementNamed(context, '/home');
+    }
+  } catch (e) {
+    print("ERROR FIREBASE: $e"); // <--- Tambahkan ini
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Gagal Masuk"),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+},
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.unesaBlue,
                                   foregroundColor: Colors.white,
@@ -244,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
                     const Divider(),
                     const SizedBox(height: 12),
-                    Text(
+                    const Text(
                       'Dengan masuk, Anda menyetujui syarat dan ketentuan aplikasi Lost & Found UNESA Magetan',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: AppColors.mutedText),
@@ -252,9 +295,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 12),
                     GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/admin-login'),
-                      child: Row(
+                      child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(Icons.shield, size: 14, color: AppColors.mutedText),
                           SizedBox(width: 6),
                           Text(
