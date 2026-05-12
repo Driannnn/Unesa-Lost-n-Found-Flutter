@@ -12,7 +12,10 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _showManual = false;
-  
+  bool _obscurePassword = true;
+  bool _isGoogleLoading = false;
+  bool _isNimLoading = false;
+
   // Deklarasi ganda dihapus agar tidak error
   final TextEditingController _nimController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -23,6 +26,34 @@ class _LoginScreenState extends State<LoginScreen> {
     _nimController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  /// Handler untuk Google Sign-In via tombol SSO
+  Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleLoading) return;
+
+    setState(() => _isGoogleLoading = true);
+
+    try {
+      final user = await _authService.signInWithGoogle();
+
+      if (user != null && mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
+    }
   }
 
   @override
@@ -129,18 +160,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // SSO Button (Tetap statis untuk sementara)
+                    // SSO Button → sekarang memanggil Google Sign-In
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/home');
-                        },
-                        icon: const Icon(Icons.login, size: 20),
-                        label: const Text(
-                          'Login with SSO UNESA',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
+                        icon: _isGoogleLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.login, size: 20),
+                        label: Text(
+                          _isGoogleLoading ? 'Menghubungkan...' : 'Login with SSO UNESA',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.unesaBlue,
@@ -200,9 +238,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: const TextStyle(fontSize: 14, color: Colors.black),
                             ),
                             const SizedBox(height: 8),
+                            // Password field dengan hide/show toggle
                             TextField(
                               controller: _passwordController,
-                              obscureText: true,
+                              obscureText: _obscurePassword,
                               decoration: InputDecoration(
                                 hintText: 'Password',
                                 hintStyle: const TextStyle(fontSize: 14),
@@ -216,6 +255,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                   horizontal: 12,
                                   vertical: 12,
                                 ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    size: 20,
+                                    color: AppColors.mutedText,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
                               ),
                               style: const TextStyle(fontSize: 14, color: Colors.black),
                             ),
@@ -223,49 +276,50 @@ class _LoginScreenState extends State<LoginScreen> {
                             SizedBox(
                               width: double.infinity,
                               height: 40,
-                              // LOGIKA AUTHENTICATION DITAMBAHKAN DI SINI
                               child: ElevatedButton(
-onPressed: () async {
-  String nim = _nimController.text.trim();
-  String password = _passwordController.text.trim();
+                                onPressed: _isNimLoading
+                                    ? null
+                                    : () async {
+                                        String nim = _nimController.text.trim();
+                                        String password = _passwordController.text.trim();
 
-  print("1. Tombol Masuk Ditekan!"); // <--- Tambahkan ini
-  print("NIM: $nim, Password: $password"); // <--- Tambahkan ini
+                                        if (nim.isEmpty || password.isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text("Harap isi semua kolom!")),
+                                          );
+                                          return;
+                                        }
 
-  if (nim.isEmpty || password.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Harap isi semua kolom!")),
-    );
-    return;
-  }
+                                        setState(() => _isNimLoading = true);
 
-  try {
-    print("2. Mulai menghubungi Firebase..."); // <--- Tambahkan ini
-    final user = await _authService.loginWithNIM(nim, password);
-    
-    if (user != null && mounted) {
-      print("3. Login Berhasil!"); // <--- Tambahkan ini
-      Navigator.pushReplacementNamed(context, '/home');
-    }
-  } catch (e) {
-    print("ERROR FIREBASE: $e"); // <--- Tambahkan ini
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("Gagal Masuk"),
-          content: Text(e.toString()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-},
+                                        try {
+                                          final user = await _authService.loginWithNIM(nim, password);
+
+                                          if (user != null && mounted) {
+                                            Navigator.pushReplacementNamed(context, '/home');
+                                          }
+                                        } catch (e) {
+                                          if (mounted) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text("Gagal Masuk"),
+                                                content: Text(e.toString()),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(context),
+                                                    child: const Text("OK"),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }
+                                        } finally {
+                                          if (mounted) {
+                                            setState(() => _isNimLoading = false);
+                                          }
+                                        }
+                                      },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.unesaBlue,
                                   foregroundColor: Colors.white,
@@ -273,7 +327,16 @@ onPressed: () async {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                child: const Text('Masuk', style: TextStyle(fontSize: 14)),
+                                child: _isNimLoading
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text('Masuk', style: TextStyle(fontSize: 14)),
                               ),
                             ),
                           ],

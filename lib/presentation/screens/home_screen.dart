@@ -65,10 +65,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Ambil inisial nama user yang sedang login untuk Avatar
+    // Ambil nama user yang sedang login untuk Avatar
+    // Prioritaskan displayName (dari Google Sign-In), fallback ke email
     final currentUser = FirebaseAuth.instance.currentUser;
-    final userName = currentUser?.email?.split('@')[0] ?? 'Mahasiswa';
+    final userName = currentUser?.displayName ??
+        currentUser?.email?.split('@')[0] ??
+        'Mahasiswa';
     final initial = userName.isNotEmpty ? userName[0].toUpperCase() : 'M';
+    final photoUrl = currentUser?.photoURL;
 
     return Scaffold(
       backgroundColor: AppColors.bgLight,
@@ -152,14 +156,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         CircleAvatar(
                           radius: 22,
                           backgroundColor: AppColors.unesaGold,
-                          child: Text(
-                            initial,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.unesaBlue,
-                            ),
-                          ),
+                          backgroundImage: photoUrl != null
+                              ? NetworkImage(photoUrl)
+                              : null,
+                          child: photoUrl == null
+                              ? Text(
+                                  initial,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.unesaBlue,
+                                  ),
+                                )
+                              : null,
                         ),
                       ],
                     ),
