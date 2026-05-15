@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../widgets/app_colors.dart';
-import '../../data/service/matching_service.dart'; // 1. IMPORT SERVICE AI KITA
+import '../../data/service/matching_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Screen untuk menampilkan detail barang dan status kecocokan AI
 class MatchDetailsScreen extends StatefulWidget {
@@ -34,18 +35,19 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     }
   }
 
-  // 4. LOGIKA PEMANGGILAN OTAK AI
+// 4. LOGIKA PEMANGGILAN OTAK AI
   Future<void> _scanForMatch() async {
     // Memberikan jeda 2 detik agar animasi "Memindai" terlihat keren
     await Future.delayed(const Duration(seconds: 2));
 
-    // Memanggil algoritma di MatchingService
+    // Memanggil algoritma di MatchingService yang sudah diperbarui
     final match = await MatchingService().findBestMatch(
-      currentReportId: '', // Dikosongkan karena tidak punya ID
+      currentReportId: _currentReport['id'] ?? '', // <-- SEKARANG MENGIRIM ID ASLI
       isLost: _currentReport['status'] == 'lost',
       category: _currentReport['category'] ?? '',
       location: _currentReport['location'] ?? '',
       description: _currentReport['description'] ?? '',
+      title: _currentReport['title'] ?? '', // <-- MENGIRIM JUDUL UNTUK DICOCOKKAN
     );
 
     // Update tampilan jika sudah selesai
@@ -54,6 +56,18 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
         _bestMatch = match;
         _isScanning = false; // Matikan animasi loading
       });
+
+      // SIMPAN SKOR KE FIREBASE AGAR ADMIN & MAHASISWA 100% SINKRON
+      if (match != null && _currentReport['id'] != null && _currentReport['id'].toString().isNotEmpty) {
+        try {
+          FirebaseFirestore.instance
+              .collection('reports')
+              .doc(_currentReport['id'])
+              .update({'score': match['matchScore']});
+        } catch (e) {
+          print('Gagal menyimpan skor AI ke Firebase: $e');
+        }
+      }
     }
   }
 

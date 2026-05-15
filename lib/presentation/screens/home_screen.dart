@@ -498,6 +498,7 @@ return ItemCardWidget(
       context, 
       '/match-details',
       arguments: {
+        'id': doc.id,
         'title': data['title'],
         'category': data['category'],
         'description': data['description'],
