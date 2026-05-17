@@ -20,7 +20,7 @@ class _ReportScreenState extends State<ReportScreen> {
   final _descController = TextEditingController();
   String? _category;
   String? _location;
-  String _date = '2026-05-08'; // Nanti bisa diubah jadi DatePicker
+  String _date = ''; // Akan diisi tanggal hari ini di initState
 
   // Inisialisasi Database Service
   final DatabaseService _dbService = DatabaseService();
@@ -92,6 +92,13 @@ class _ReportScreenState extends State<ReportScreen> {
       !_isLoading; // Tombol disable saat loading
 
   @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _date = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _descController.dispose();
@@ -103,6 +110,7 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       final nim = user?.email?.split('@')[0] ?? 'Anonim';
+      final displayName = user?.displayName ?? nim;
 
       await _dbService.submitReport(
         title: _nameController.text.trim(),
@@ -112,6 +120,7 @@ class _ReportScreenState extends State<ReportScreen> {
         date: _date,
         isLost: widget.isLost,
         reporterNim: nim,
+        reporterName: displayName,
         imageBase64: _base64String, // Kirim teks Base64-nya ke database
       );
 
@@ -350,7 +359,22 @@ class _ReportScreenState extends State<ReportScreen> {
                   _label('Tanggal ${widget.isLost ? "Hilang" : "Ditemukan"} *'),
                   const SizedBox(height: 6),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.tryParse(_date) ?? DateTime.now(),
+                        firstDate: DateTime(2024),
+                        lastDate: DateTime.now(),
+                        helpText: 'Pilih Tanggal',
+                        cancelText: 'Batal',
+                        confirmText: 'Pilih',
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _date = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                        });
+                      }
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Instance Firestore
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Stream<QuerySnapshot> _reportsStream;
+  late Stream<QuerySnapshot> _announcementsStream;
   static const _categoryIcons = {
     'Dompet': '👛',
     'Tas': '🎒',
@@ -41,6 +42,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _reportsStream = _firestore
         .collection('reports')
         .orderBy('createdAt', descending: true)
+        .snapshots();
+    _announcementsStream = _firestore
+        .collection('announcements')
+        .where('pinned', isEqualTo: true)
         .snapshots();
   }
 
@@ -286,9 +291,37 @@ class _HomeScreenState extends State<HomeScreen> {
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
                   children: [
-                    _announcementBanner(
-                      'Sistem Terhubung',
-                      'Database Firebase aktif secara Real-time.',
+                    // Pengumuman dari Admin (Firestore)
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _announcementsStream,
+                      builder: (context, annSnap) {
+                        if (!annSnap.hasData || annSnap.data!.docs.isEmpty) {
+                          return _announcementBanner(
+                            'Sistem Terhubung',
+                            'Database Firebase aktif secara Real-time.',
+                          );
+                        }
+                        final annDocs = annSnap.data!.docs;
+                        return SizedBox(
+                          height: 64,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: annDocs.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            itemBuilder: (ctx, i) {
+                              final annData = annDocs[i].data() as Map<String, dynamic>;
+                              final isPinned = annData['pinned'] == true;
+                              return SizedBox(
+                                width: MediaQuery.of(context).size.width - 48 - (annDocs.length > 1 ? 32 : 0),
+                                child: _announcementBanner(
+                                  '${isPinned ? '📌 ' : ''}${annData['title'] ?? 'Pengumuman'}',
+                                  annData['body'] ?? '',
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
 

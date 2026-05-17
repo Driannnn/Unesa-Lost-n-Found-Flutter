@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/app_colors.dart';
 import 'dart:convert';
+import '../../data/service/admin_service.dart';
 
 /// Admin dashboard with Overview, Claims, and Announcements tabs.
 class AdminDashboardScreen extends StatefulWidget {
@@ -17,40 +18,43 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // 1. Tambahkan Instance Firestore
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AdminService _adminService = AdminService();
 
-  // Data Pengumuman tetap dibiarkan statis sesuai aslinya
-  final _announcements = [
-    {
-      'id': 'ann1',
-      'title': 'Penemuan Dompet di Perpustakaan',
-      'body': 'Telah ditemukan sebuah dompet warna hitam di area perpustakaan lantai 1.',
-      'type': 'found',
-      'author': 'Satpam A. Wibowo',
-      'date': 'Hari ini, 08:30',
-      'pinned': true,
-      'active': true,
-    },
-    {
-      'id': 'ann2',
-      'title': 'Zona Rawan Kehilangan: Kantin',
-      'body': 'Tingkat kehilangan barang di area kantin meningkat minggu ini.',
-      'type': 'warning',
-      'author': 'Admin IT',
-      'date': 'Kemarin, 14:00',
-      'pinned': true,
-      'active': true,
-    },
-    {
-      'id': 'ann3',
-      'title': 'Prosedur Pengambilan Barang',
-      'body': 'Pengambilan barang hilang wajib disertai KTM asli dan deskripsi barang.',
-      'type': 'info',
-      'author': 'Koordinator',
-      'date': '3 hari lalu',
-      'pinned': false,
-      'active': true,
-    },
-  ];
+  // Data admin dinamis dari login
+  String _adminName = 'Admin';
+  String _adminRole = 'Satpam';
+  bool _isInitialized = false;
+
+  // Cache streams agar tidak di-recreate saat rebuild (fix Flutter Web bug)
+  late final Stream<QuerySnapshot> _reportsStream;
+  late final Stream<QuerySnapshot> _notifStream;
+  late final Stream<QuerySnapshot> _announcementsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _reportsStream = _firestore
+        .collection('reports')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+    _notifStream = _adminService.getUnreadNotificationsStream();
+    _announcementsStream = _adminService.getAnnouncementsStream();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialized) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        _adminName = args['adminName'] ?? 'Admin';
+        _adminRole = args['adminRole'] ?? 'Satpam';
+      }
+      // Seed pengumuman default jika collection kosong
+      _adminService.seedDefaultAnnouncements(_adminName);
+      _isInitialized = true;
+    }
+  }
 
   static const _emojis = {
     'Dompet': '👛',
@@ -165,6 +169,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       await _firestore.collection('reports').doc(id).update({
         'status': dbStatus,
       });
+
+      // Buat notifikasi otomatis
+      try {
+        await _adminService.createNotification(
+          title: 'Status Klaim Diubah',
+          body: 'Klaim diubah menjadi $dbStatus oleh $_adminName',
+          type: 'claim_update',
+        );
+      } catch (_) {}
     } catch (e) {
       print("Error updating status: $e");
     }
@@ -175,10 +188,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore
-            .collection('reports')
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
+        stream: _reportsStream,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -222,22 +232,56 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                children: const [
+                                children: [
                                   Text(
-                                    'A. Wibowo',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                                    _adminName,
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
                                   ),
-                                  SizedBox(width: 4),
-                                  Icon(Icons.shield, size: 16, color: AppColors.unesaGold),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.shield, size: 16, color: AppColors.unesaGold),
                                 ],
                               ),
                               Text(
-                                'Portal Admin · PSDKU Magetan',
+                                '$_adminRole · PSDKU Magetan',
                                 style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6)),
                               ),
                             ],
                           ),
                         ),
+                        // Notification bell
+                        StreamBuilder<QuerySnapshot>(
+                          stream: _notifStream,
+                          builder: (context, notifSnap) {
+                            int unread = notifSnap.hasData ? _adminService.countUnread(notifSnap.data!) : 0;
+                            return GestureDetector(
+                              onTap: () => _showNotificationPanel(context),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 36, height: 36,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.notifications, size: 18, color: Colors.white.withOpacity(0.8)),
+                                  ),
+                                  if (unread > 0)
+                                    Positioned(
+                                      top: -2, right: -2,
+                                      child: Container(
+                                        width: 16, height: 16,
+                                        decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
+                                        alignment: Alignment.center,
+                                        child: Text('$unread', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () => Navigator.pushReplacementNamed(context, '/'),
                           child: Container(
@@ -263,7 +307,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         _headerTab('overview', 'Ringkasan', Icons.shield, null),
                         _headerTab('claims', 'Klaim', Icons.inventory_2, pendingCount),
-                        _headerTab('announcements', 'Pengumuman', Icons.campaign, _announcements.where((a) => a['active'] == true).length),
+                        _headerTab('announcements', 'Pengumuman', Icons.campaign, null),
                       ],
                     ),
                   ],
@@ -348,7 +392,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Selamat bertugas,', style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7))),
-              const Text('A. Wibowo 👮', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+              Text('$_adminName 👮', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -356,7 +400,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(width: 8),
                   _miniStat('Disetujui', '$aCount', AppColors.success),
                   const SizedBox(width: 8),
-                  _miniStat('Pengumuman', '${_announcements.where((a) => a['active'] == true).length}', Colors.white),
+                  _miniStat('Pengumuman', '-', Colors.white),
                 ],
               ),
             ],
@@ -725,21 +769,82 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ── Announcements Tab ──
   Widget _announcementsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
+    return StreamBuilder<QuerySnapshot>(
+      stream: _announcementsStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snapshot.data!.docs;
+        int activeCount = docs.where((d) => d['active'] == true).length;
+        int pinnedCount = docs.where((d) => d['pinned'] == true).length;
+        int inactiveCount = docs.where((d) => d['active'] != true).length;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            _annStat('Aktif', _announcements.where((a) => a['active'] == true).length, AppColors.success),
-            const SizedBox(width: 8),
-            _annStat('Disematkan', _announcements.where((a) => a['pinned'] == true).length, AppColors.unesaGold),
-            const SizedBox(width: 8),
-            _annStat('Nonaktif', _announcements.where((a) => a['active'] != true).length, AppColors.lightMuted),
+            Row(
+              children: [
+                _annStat('Aktif', activeCount, AppColors.success),
+                const SizedBox(width: 8),
+                _annStat('Disematkan', pinnedCount, AppColors.unesaGold),
+                const SizedBox(width: 8),
+                _annStat('Nonaktif', inactiveCount, AppColors.lightMuted),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Tombol buat pengumuman baru
+            GestureDetector(
+              onTap: () => _showCreateAnnouncementDialog(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.unesaLightBlue,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.unesaBlue.withOpacity(0.2)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add, size: 16, color: AppColors.unesaBlue),
+                    SizedBox(width: 6),
+                    Text('Buat Pengumuman Baru', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.unesaBlue)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (docs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 48),
+                child: Column(
+                  children: [
+                    Icon(Icons.campaign, size: 40, color: AppColors.lightMuted),
+                    SizedBox(height: 12),
+                    Text('Belum ada pengumuman', style: TextStyle(fontSize: 14, color: AppColors.mutedText)),
+                  ],
+                ),
+              )
+            else
+              ...docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final ts = data['createdAt'] as Timestamp?;
+                final dt = ts?.toDate() ?? DateTime.now();
+                return _announcementCard({
+                  'id': doc.id,
+                  'title': data['title'] ?? '',
+                  'body': data['body'] ?? '',
+                  'type': data['type'] ?? 'info',
+                  'author': data['author'] ?? 'Admin',
+                  'date': _timeAgo(dt),
+                  'pinned': data['pinned'] ?? false,
+                  'active': data['active'] ?? true,
+                });
+              }),
           ],
-        ),
-        const SizedBox(height: 12),
-        ..._announcements.map((ann) => _announcementCard(ann)),
-      ],
+        );
+      },
     );
   }
 
@@ -763,10 +868,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _announcementCard(Map<String, dynamic> ann) {
-    final cfg = _annTypeCfg[ann['type'] as String]!;
+    final cfg = _annTypeCfg[ann['type'] as String] ?? _annTypeCfg['info']!;
     final color = Color(cfg['color'] as int);
     final isActive = ann['active'] == true;
     final isPinned = ann['pinned'] == true;
+    final docId = ann['id'] as String;
 
     return Opacity(
       opacity: isActive ? 1.0 : 0.55,
@@ -818,9 +924,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _annAction(isPinned ? Icons.push_pin : Icons.push_pin_outlined, isPinned ? 'Unpin' : 'Pin', isPinned ? AppColors.unesaGold : AppColors.lightMuted, isPinned ? AppColors.goldBgLight : AppColors.bgLight),
+                      GestureDetector(
+                        onTap: () => _adminService.togglePin(docId, isPinned),
+                        child: _annAction(isPinned ? Icons.push_pin : Icons.push_pin_outlined, isPinned ? 'Unpin' : 'Pin', isPinned ? AppColors.unesaGold : AppColors.lightMuted, isPinned ? AppColors.goldBgLight : AppColors.bgLight),
+                      ),
                       const SizedBox(width: 8),
-                      _annAction(Icons.visibility, isActive ? 'Nonaktifkan' : 'Aktifkan', isActive ? AppColors.lightMuted : AppColors.success, isActive ? AppColors.bgLight : AppColors.foundBgLight),
+                      GestureDetector(
+                        onTap: () => _adminService.toggleActive(docId, isActive),
+                        child: _annAction(Icons.visibility, isActive ? 'Nonaktifkan' : 'Aktifkan', isActive ? AppColors.lightMuted : AppColors.success, isActive ? AppColors.bgLight : AppColors.foundBgLight),
+                      ),
                     ],
                   ),
                 ],
@@ -843,6 +955,130 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(width: 4),
           Text(label, style: TextStyle(fontSize: 12, color: color)),
         ],
+      ),
+    );
+  }
+
+  // ── Dialog Buat Pengumuman ──
+  void _showCreateAnnouncementDialog(BuildContext context) {
+    final titleCtrl = TextEditingController();
+    final bodyCtrl = TextEditingController();
+    String selectedType = 'info';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Buat Pengumuman', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleCtrl, decoration: const InputDecoration(hintText: 'Judul pengumuman', isDense: true)),
+                const SizedBox(height: 12),
+                TextField(controller: bodyCtrl, maxLines: 3, decoration: const InputDecoration(hintText: 'Isi pengumuman', isDense: true)),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedType,
+                  decoration: const InputDecoration(isDense: true, labelText: 'Tipe'),
+                  items: const [
+                    DropdownMenuItem(value: 'info', child: Text('Info')),
+                    DropdownMenuItem(value: 'warning', child: Text('Peringatan')),
+                    DropdownMenuItem(value: 'found', child: Text('Barang Temuan')),
+                    DropdownMenuItem(value: 'event', child: Text('Acara')),
+                  ],
+                  onChanged: (v) => setDialogState(() => selectedType = v!),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            ElevatedButton(
+              onPressed: () async {
+                if (titleCtrl.text.trim().isEmpty) return;
+                await _adminService.createAnnouncement(
+                  title: titleCtrl.text.trim(),
+                  body: bodyCtrl.text.trim(),
+                  type: selectedType,
+                  author: _adminName,
+                );
+                if (mounted) Navigator.pop(ctx);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.unesaBlue, foregroundColor: Colors.white),
+              child: const Text('Kirim'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Panel Notifikasi ──
+  void _showNotificationPanel(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        maxChildSize: 0.8,
+        minChildSize: 0.3,
+        expand: false,
+        builder: (ctx, scrollCtrl) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Notifikasi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.unesaBlue)),
+                  GestureDetector(
+                    onTap: () async {
+                      await _adminService.markAllNotificationsRead();
+                    },
+                    child: const Text('Tandai semua dibaca', style: TextStyle(fontSize: 12, color: AppColors.unesaGold, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _adminService.getNotificationsStream(),
+                builder: (ctx, snap) {
+                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+                  final docs = snap.data!.docs;
+                  if (docs.isEmpty) {
+                    return const Center(child: Text('Belum ada notifikasi', style: TextStyle(color: AppColors.mutedText)));
+                  }
+                  return ListView.separated(
+                    controller: scrollCtrl,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: docs.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (ctx, i) {
+                      final data = docs[i].data() as Map<String, dynamic>;
+                      final isRead = data['read'] == true;
+                      final ts = data['createdAt'] as Timestamp?;
+                      final dt = ts?.toDate() ?? DateTime.now();
+                      final typeIcon = data['type'] == 'new_report' ? Icons.fiber_new : Icons.notifications;
+                      return ListTile(
+                        dense: true,
+                        leading: Icon(typeIcon, size: 20, color: isRead ? AppColors.lightMuted : AppColors.unesaBlue),
+                        title: Text(data['title'] ?? '', style: TextStyle(fontSize: 13, fontWeight: isRead ? FontWeight.w400 : FontWeight.w600)),
+                        subtitle: Text(data['body'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+                        trailing: Text(_timeAgo(dt), style: const TextStyle(fontSize: 10, color: AppColors.lightMuted)),
+                        tileColor: isRead ? null : AppColors.unesaLightBlue.withOpacity(0.3),
+                        onTap: () => _adminService.markNotificationRead(docs[i].id),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

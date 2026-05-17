@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/app_colors.dart';
+import '../../data/service/admin_service.dart';
 
 /// Admin login screen for security guards and campus admins.
 class AdminLoginScreen extends StatefulWidget {
@@ -13,7 +14,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _showPassword = false;
+  bool _isLoading = false;
   String? _error;
+
+  final AdminService _adminService = AdminService();
 
   static const _accounts = [
     {'username': 'satpam', 'password': 'admin123', 'role': 'Satpam'},
@@ -28,20 +32,44 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() => _error = 'Username dan password wajib diisi.');
       return;
     }
-    final account = _accounts.where(
-      (a) => a['username'] == _usernameController.text.toLowerCase() && a['password'] == _passwordController.text,
-    );
-    if (account.isEmpty) {
-      setState(() => _error = 'Username atau password salah.');
-      return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _adminService.loginAdmin(
+        _usernameController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (result == null) {
+        setState(() => _error = 'Username atau password salah.');
+        return;
+      }
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/admin-dashboard',
+          arguments: {
+            'adminName': result['name'] ?? 'Admin',
+            'adminRole': result['role'] ?? 'Satpam',
+            'adminUsername': result['username'] ?? '',
+          },
+        );
+      }
+    } catch (e) {
+      setState(() => _error = 'Terjadi kesalahan: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    setState(() => _error = null);
-    Navigator.pushReplacementNamed(context, '/admin-dashboard');
   }
 
   @override
@@ -266,9 +294,21 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: _handleLogin,
-                        icon: const Icon(Icons.shield, size: 16),
-                        label: const Text('Masuk ke Portal Admin', style: TextStyle(fontSize: 14)),
+                        onPressed: _isLoading ? null : _handleLogin,
+                        icon: _isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.shield, size: 16),
+                        label: Text(
+                          _isLoading ? 'Memverifikasi...' : 'Masuk ke Portal Admin',
+                          style: const TextStyle(fontSize: 14),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.unesaBlue,
                           foregroundColor: Colors.white,

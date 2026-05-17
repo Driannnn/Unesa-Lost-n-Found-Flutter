@@ -11,6 +11,7 @@ class DatabaseService {
     required String date,
     required bool isLost,
     required String reporterNim,
+    String? reporterName, // Nama pelapor
     String? imageBase64, // <-- Sekarang kita menerima teks Base64, bukan file
   }) async {
     try {
@@ -22,10 +23,25 @@ class DatabaseService {
         'date': date,
         'isLost': isLost,
         'reporterNim': reporterNim,
+        'reporterName': reporterName ?? reporterNim, // Simpan nama pelapor
         'imageBase64': imageBase64 ?? '', // Simpan teks panjang fotonya di sini
         'status': 'Open',
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // Buat notifikasi otomatis untuk admin
+      try {
+        final String tipe = isLost ? 'hilang' : 'temuan';
+        await _db.collection('admin_notifications').add({
+          'title': 'Laporan Baru ($tipe)',
+          'body': '$title - dilaporkan oleh ${reporterName ?? reporterNim}',
+          'type': 'new_report',
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {
+        // Abaikan error notifikasi agar tidak mengganggu laporan utama
+      }
     } catch (e) {
       throw Exception('Gagal menyimpan ke database: $e');
     }
