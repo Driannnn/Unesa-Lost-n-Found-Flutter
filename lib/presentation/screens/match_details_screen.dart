@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/app_colors.dart';
 import '../../data/service/matching_service.dart';
+import '../../data/service/chat_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Screen untuk menampilkan detail barang dan status kecocokan AI
 class MatchDetailsScreen extends StatefulWidget {
   const MatchDetailsScreen({super.key});
 
@@ -14,58 +15,51 @@ class MatchDetailsScreen extends StatefulWidget {
 
 class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   String _activeTab = 'details';
-
-  // 2. VARIABEL STATE UNTUK AI
   bool _isInit = true;
   bool _isScanning = true;
   Map<String, dynamic>? _bestMatch;
   Map<String, dynamic> _currentReport = {};
 
-  // 3. FUNGSI LIFECYCLE: Menangkap data dan memulai scan otomatis
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_isInit) {
-      // Ambil data "surat pengantar" dari HomeScreen
       _currentReport =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ??
           {};
-      _scanForMatch(); // Mulai jalankan otak AI
+      _scanForMatch();
       _isInit = false;
     }
   }
 
-// 4. LOGIKA PEMANGGILAN OTAK AI
   Future<void> _scanForMatch() async {
-    // Memberikan jeda 2 detik agar animasi "Memindai" terlihat keren
     await Future.delayed(const Duration(seconds: 2));
 
-    // Memanggil algoritma di MatchingService yang sudah diperbarui
     final match = await MatchingService().findBestMatch(
-      currentReportId: _currentReport['id'] ?? '', // <-- SEKARANG MENGIRIM ID ASLI
+      currentReportId: _currentReport['id'] ?? '',
       isLost: _currentReport['status'] == 'lost',
       category: _currentReport['category'] ?? '',
       location: _currentReport['location'] ?? '',
       description: _currentReport['description'] ?? '',
-      title: _currentReport['title'] ?? '', // <-- MENGIRIM JUDUL UNTUK DICOCOKKAN
+      title: _currentReport['title'] ?? '',
     );
 
-    // Update tampilan jika sudah selesai
     if (mounted) {
       setState(() {
         _bestMatch = match;
-        _isScanning = false; // Matikan animasi loading
+        _isScanning = false;
       });
 
-      // SIMPAN SKOR KE FIREBASE AGAR ADMIN & MAHASISWA 100% SINKRON
-      if (match != null && _currentReport['id'] != null && _currentReport['id'].toString().isNotEmpty) {
+      if (match != null &&
+          _currentReport['id'] != null &&
+          _currentReport['id'].toString().isNotEmpty) {
         try {
           FirebaseFirestore.instance
               .collection('reports')
               .doc(_currentReport['id'])
               .update({'score': match['matchScore']});
         } catch (e) {
-          print('Gagal menyimpan skor AI ke Firebase: $e');
+          print('Gagal menyimpan skor AI: $e');
         }
       }
     }
@@ -161,8 +155,6 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-
-                // 5. KOTAK STATUS AI YANG DINAMIS
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -210,7 +202,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
             ),
           ),
 
-          // ── Bottom CTA (Hanya muncul jika ADA kecocokan) ──
+          // ── Bottom CTA ──
           if (!_isScanning && _bestMatch != null)
             Container(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
@@ -231,7 +223,50 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: () => Navigator.pushNamed(context, '/chat'),
+                      onPressed: () async {
+                        final currentUser = FirebaseAuth.instance.currentUser;
+                        if (currentUser == null) return;
+
+                        final chatService = ChatService();
+                        // PERBAIKAN: Menggunakan NIM, bukan UID
+                        final currentUserId =
+                            currentUser.email?.split('@')[0] ?? currentUser.uid;
+                        final currentUserName =
+                            currentUser.displayName ??
+                            currentUser.email?.split('@')[0] ??
+                            'Anonim';
+
+                        final otherUserId =
+                            _bestMatch!['reporterNim'] ?? 'unknown';
+                        final otherUserName =
+                            _bestMatch!['reporterName'] ??
+                            _bestMatch!['reporterNim'] ??
+                            'Penemu';
+                        final reportId = _currentReport['id'] ?? '';
+                        final reportTitle = _currentReport['title'] ?? 'Barang';
+
+                        final chatRoomId = await chatService
+                            .getOrCreateChatRoom(
+                              currentUserId: currentUserId,
+                              otherUserId: otherUserId,
+                              reportId: reportId,
+                              reportTitle: reportTitle,
+                              currentUserName: currentUserName,
+                              otherUserName: otherUserName,
+                            );
+
+                        if (mounted) {
+                          Navigator.pushNamed(
+                            context,
+                            '/chat-room',
+                            arguments: {
+                              'chatRoomId': chatRoomId,
+                              'reportTitle': reportTitle,
+                              'otherUserName': otherUserName,
+                            },
+                          );
+                        }
+                      },
                       icon: const Icon(Icons.chat_bubble, size: 20),
                       label: Text(
                         'Chat dengan ${_bestMatch!['reporterNim'] ?? 'Penemu'}',
@@ -263,7 +298,6 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     );
   }
 
-  // WIDGET HELPER: Mengatur tampilan Kotak Status AI
   Widget _buildHeroContent() {
     if (_isScanning) {
       return Column(
@@ -443,7 +477,6 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     ];
   }
 
-  // WIDGET HELPER: Mengatur Tab Perbandingan
   List<Widget> _comparisonTab() {
     if (_isScanning) {
       return [
@@ -455,7 +488,6 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
         ),
       ];
     }
-
     if (_bestMatch == null) {
       return [
         Container(
@@ -485,11 +517,9 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       ];
     }
 
-    // Jika menemukan kecocokan, tampilkan foto Side-by-Side
     final isLost = _currentReport['status'] == 'lost';
     final currentLabel = isLost ? 'Barang Anda' : 'Temuan Anda';
     final matchLabel = isLost ? 'Potensi Ditemukan' : 'Potensi Pemilik';
-
     final currentEmoji = _getEmoji(_currentReport['category'] ?? '');
     final matchEmoji = _getEmoji(_bestMatch!['category'] ?? '');
 
@@ -516,8 +546,6 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
         ),
       ]),
       const SizedBox(height: 16),
-
-      // Analisis AI Teks
       Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -557,10 +585,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Ditemukan kemiripan dengan laporan atas nama "${_bestMatch!['reporterNim'] ?? 'Anonim'}".\n\n'
-                    '• Kategori: ${_bestMatch!['category']}\n'
-                    '• Lokasi: ${_bestMatch!['location']}\n\n'
-                    'Skor kecocokan mencapai ${_bestMatch!['matchScore']}%. Silakan gunakan fitur chat untuk verifikasi lebih lanjut.',
+                    'Ditemukan kemiripan dengan laporan atas nama "${_bestMatch!['reporterNim'] ?? 'Anonim'}".\n\n• Kategori: ${_bestMatch!['category']}\n• Lokasi: ${_bestMatch!['location']}\n\nSkor kecocokan mencapai ${_bestMatch!['matchScore']}%. Silakan gunakan fitur chat untuk verifikasi lebih lanjut.',
                     style: const TextStyle(
                       fontSize: 14,
                       color: AppColors.mutedText,

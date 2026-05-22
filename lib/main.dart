@@ -9,6 +9,7 @@ import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/report_screen.dart';
 import 'presentation/screens/dashboard_screen.dart';
 import 'presentation/screens/chat_screen.dart';
+import 'presentation/screens/chat_list_screen.dart';
 import 'presentation/screens/match_details_screen.dart';
 import 'presentation/screens/admin_login_screen.dart';
 import 'presentation/screens/admin_dashboard_screen.dart';
@@ -67,7 +68,8 @@ class UnesaLostFoundApp extends StatelessWidget {
         '/report-lost': (context) => const ReportScreen(isLost: true),
         '/report-found': (context) => const ReportScreen(isLost: false),
         '/dashboard': (context) => const DashboardScreen(),
-        '/chat': (context) => const ChatScreen(),
+        '/chat': (context) => const ChatListScreen(),
+        '/chat-room': (context) => const ChatScreen(),
         '/match-details': (context) => const MatchDetailsScreen(),
         '/admin-login': (context) => const AdminLoginScreen(),
         '/admin-dashboard': (context) => const AdminDashboardScreen(),

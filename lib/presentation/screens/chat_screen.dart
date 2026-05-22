@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/app_colors.dart';
+import '../../data/service/chat_service.dart';
 
 /// Anonymous chat screen for claim coordination.
 class ChatScreen extends StatefulWidget {
@@ -11,14 +14,19 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _inputController = TextEditingController();
+  final _scrollController = ScrollController();
   bool _showInfo = false;
+  bool _isInit = true;
 
-  final _messages = <Map<String, String>>[
-    {'sender': 'other', 'text': 'Halo! Saya menemukan dompet coklat di Gedung A Lt. 2. Apakah ini milik Anda?', 'time': '09:14'},
-    {'sender': 'user', 'text': 'Ya benar! Itu dompet saya. Terima kasih sudah menemukannya!', 'time': '09:16'},
-    {'sender': 'other', 'text': 'Saya sudah serahkan ke pos satpam Gedung A. Bisa diambil dengan menunjukkan KTM.', 'time': '09:17'},
-    {'sender': 'user', 'text': 'Baik, terima kasih banyak! Saya akan ke sana sekarang.', 'time': '09:18'},
-  ];
+  final ChatService _chatService = ChatService();
+
+  String _chatRoomId = '';
+  String _reportTitle = 'Chat';
+
+  String get _currentUserId {
+    final user = FirebaseAuth.instance.currentUser;
+    return user?.email?.split('@')[0] ?? user?.uid ?? '';
+  }
 
   static const _quickReplies = [
     'Kapan bisa diambil?',
@@ -28,17 +36,62 @@ class _ChatScreenState extends State<ChatScreen> {
   ];
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isInit) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ??
+          {};
+      _chatRoomId = args['chatRoomId'] ?? '';
+      _reportTitle = args['reportTitle'] ?? 'Chat';
+      _isInit = false;
+    }
+  }
+
+  @override
   void dispose() {
     _inputController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  void _sendMessage(String text) {
-    if (text.trim().isEmpty) return;
-    setState(() {
-      _messages.add({'sender': 'user', 'text': text.trim(), 'time': TimeOfDay.now().format(context)});
-      _inputController.clear();
+  Future<void> _sendMessage(String text) async {
+    if (text.trim().isEmpty || _chatRoomId.isEmpty) return;
+
+    try {
+      await _chatService.sendMessage(
+        chatRoomId: _chatRoomId,
+        senderId: _currentUserId,
+        text: text.trim(),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengirim pesan: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+
+    _inputController.clear();
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
     });
+  }
+
+  String _formatTime(Timestamp? timestamp) {
+    if (timestamp == null) return '...'; // Indikator sedang mengirim
+    final date = timestamp.toDate();
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -49,7 +102,9 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           // ── Header ──
           Container(
-            decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+            decoration: const BoxDecoration(
+              gradient: AppColors.primaryGradient,
+            ),
             padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
             child: Column(
               children: [
@@ -58,9 +113,17 @@ class _ChatScreenState extends State<ChatScreen> {
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                        child: const Icon(Icons.chevron_left, size: 24, color: Colors.white),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.chevron_left,
+                          size: 24,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -69,54 +132,98 @@ class _ChatScreenState extends State<ChatScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            children: const [
+                            children: [
                               Expanded(
-                                child: Text('Dompet Coklat',
-                                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-                                    overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  _reportTitle,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              SizedBox(width: 4),
-                              Icon(Icons.verified_user, size: 16, color: AppColors.success),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified_user,
+                                size: 16,
+                                color: AppColors.success,
+                              ),
                             ],
                           ),
-                          Text('Chat Anonim · Terverifikasi',
-                              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
+                          Text(
+                            'Chat Anonim · Terverifikasi',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.6),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     GestureDetector(
                       onTap: () => setState(() => _showInfo = !_showInfo),
                       child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                        child: const Icon(Icons.info_outline, size: 20, color: Colors.white),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Claim status
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: AppColors.goldBgLight, borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldBgLight,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: const [
-                          Icon(Icons.access_time, size: 16, color: AppColors.unesaGold),
+                          Icon(
+                            Icons.access_time,
+                            size: 16,
+                            color: AppColors.unesaGold,
+                          ),
                           SizedBox(width: 8),
-                          Text('Status Klaim', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.unesaGold)),
+                          Text(
+                            'Status Klaim',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.unesaGold,
+                            ),
+                          ),
                         ],
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.unesaGold.withOpacity(0.13),
                           borderRadius: BorderRadius.circular(99),
                         ),
-                        child: const Text('Menunggu Verifikasi Admin',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.unesaGold)),
+                        child: const Text(
+                          'Menunggu Verifikasi Admin',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.unesaGold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -125,7 +232,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Info panel
           if (_showInfo)
             Container(
               color: AppColors.unesaLightBlue,
@@ -133,123 +239,236 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  Icon(Icons.verified_user, size: 16, color: AppColors.unesaBlue),
+                  Icon(
+                    Icons.verified_user,
+                    size: 16,
+                    color: AppColors.unesaBlue,
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text.rich(
-                      TextSpan(children: [
-                        TextSpan(text: 'Chat Anonim: ', style: TextStyle(fontWeight: FontWeight.w600)),
-                        TextSpan(text: 'Identitas Anda tidak akan dibagikan. Koordinasi pengambilan barang dilakukan melalui pos keamanan. Jam layanan: 07.00–17.00 WIB.'),
-                      ]),
-                      style: TextStyle(fontSize: 12, color: AppColors.unesaBlue),
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Chat Anonim: ',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          TextSpan(
+                            text:
+                                'Identitas Anda tidak akan dibagikan. Koordinasi pengambilan barang dilakukan melalui pos keamanan. Jam layanan: 07.00–17.00 WIB.',
+                          ),
+                        ],
+                      ),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.unesaBlue,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-          // Privacy bar
           if (!_showInfo)
             Container(
               color: AppColors.bgLight,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.verified_user, size: 14, color: AppColors.unesaBlue),
+                  const Icon(
+                    Icons.verified_user,
+                    size: 14,
+                    color: AppColors.unesaBlue,
+                  ),
                   const SizedBox(width: 8),
-                  Text('Chat anonim · Identitas terlindungi · Koordinasi via pos keamanan',
-                      style: TextStyle(fontSize: 12, color: AppColors.unesaBlue.withOpacity(0.7))),
+                  Text(
+                    'Chat anonim · Identitas terlindungi · Koordinasi via pos keamanan',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.unesaBlue.withOpacity(0.7),
+                    ),
+                  ),
                 ],
               ),
             ),
 
           // ── Messages ──
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              children: [
-                if (_messages.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32),
+            child: _chatRoomId.isEmpty
+                ? const Center(
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('💬', style: TextStyle(fontSize: 40)),
                         SizedBox(height: 12),
-                        Text('Mulai percakapan dengan penemu barang',
-                            style: TextStyle(fontSize: 14, color: AppColors.mutedText)),
+                        Text(
+                          'Chat room tidak ditemukan',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.mutedText,
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ..._messages.map((msg) {
-                  final isUser = msg['sender'] == 'user';
-                  final isAdmin = msg['sender'] == 'admin';
-                  if (isAdmin) {
-                    return Center(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.unesaBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(99),
+                  )
+                : StreamBuilder<QuerySnapshot>(
+                    stream: _chatService.getMessages(_chatRoomId),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text('Terjadi kesalahan: ${snapshot.error}'),
+                        );
+                      }
+
+                      // Penambahan logika loading dari kode yang diberikan
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      var messages = snapshot.data?.docs.toList() ?? [];
+
+                      // KITA URUTKAN PESAN SECARA MANUAL DI SINI (Client-Side Sorting)
+                      messages.sort((a, b) {
+                        final dataA = a.data() as Map<String, dynamic>;
+                        final dataB = b.data() as Map<String, dynamic>;
+                        final timeA = dataA['createdAt'] as Timestamp?;
+                        final timeB = dataB['createdAt'] as Timestamp?;
+
+                        if (timeA == null && timeB == null) return 0;
+                        if (timeA == null) return 1; // A pesan baru (belum masuk server) ditaruh di paling bawah
+                        if (timeB == null) return -1; // B pesan baru
+                        return timeA.compareTo(
+                          timeB,
+                        ); // Urutkan dari terlama ke terbaru
+                      });
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (_scrollController.hasClients) {
+                          _scrollController.jumpTo(
+                            _scrollController.position.maxScrollExtent,
+                          );
+                        }
+                      });
+
+                      return ListView(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
                         ),
-                        child: Text(msg['text']!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.unesaBlue)),
-                      ),
-                    );
-                  }
-                  return Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-                      decoration: BoxDecoration(
-                        color: isUser ? AppColors.unesaBlue : Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(16),
-                          topRight: const Radius.circular(16),
-                          bottomLeft: Radius.circular(isUser ? 16 : 4),
-                          bottomRight: Radius.circular(isUser ? 4 : 16),
-                        ),
-                        boxShadow: isUser ? null : const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(msg['text']!,
-                              style: TextStyle(fontSize: 14, height: 1.5, color: isUser ? Colors.white : Colors.black)),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(msg['time']!, style: TextStyle(fontSize: 10, color: isUser ? Colors.white60 : AppColors.mutedText)),
-                              if (isUser) ...[
-                                const SizedBox(width: 4),
-                                Icon(Icons.done_all, size: 12, color: Colors.white.withOpacity(0.6)),
-                              ],
-                            ],
-                          ),
+                          if (messages.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 32),
+                              child: Column(
+                                children: [
+                                  Text('💬', style: TextStyle(fontSize: 40)),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Mulai percakapan dengan penemu barang',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.mutedText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ...messages.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final isUser = data['senderId'] == _currentUserId;
+                            final text = data['text'] ?? '';
+                            final time = _formatTime(
+                              data['createdAt'] as Timestamp?,
+                            );
+
+                            return Align(
+                              alignment: isUser
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.of(context).size.width * 0.78,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isUser
+                                      ? AppColors.unesaBlue
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: const Radius.circular(16),
+                                    topRight: const Radius.circular(16),
+                                    bottomLeft: Radius.circular(
+                                      isUser ? 16 : 4,
+                                    ),
+                                    bottomRight: Radius.circular(
+                                      isUser ? 4 : 16,
+                                    ),
+                                  ),
+                                  boxShadow: isUser
+                                      ? null
+                                      : const [
+                                          BoxShadow(
+                                            color: Colors.black12,
+                                            blurRadius: 4,
+                                            offset: Offset(0, 1),
+                                          ),
+                                        ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      text,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        height: 1.5,
+                                        color: isUser
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          time,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: isUser
+                                                ? Colors.white60
+                                                : AppColors.mutedText,
+                                          ),
+                                        ),
+                                        if (isUser) ...[
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            time == '...'
+                                                ? Icons.access_time
+                                                : Icons.done_all,
+                                            size: 12,
+                                            color: Colors.white.withOpacity(
+                                              0.6,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
                         ],
-                      ),
-                    ),
-                  );
-                }),
-                // Encryption notice
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                    child: const Text('🔒 Chat dienkripsi & dipantau sistem untuk keamanan',
-                        style: TextStyle(fontSize: 12, color: AppColors.mutedText)),
+                      );
+                    },
                   ),
-                ),
-              ],
-            ),
           ),
 
           // ── Quick replies ──
@@ -264,12 +483,22 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: GestureDetector(
                     onTap: () => _inputController.text = q,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.bgLight,
                         borderRadius: BorderRadius.circular(99),
                       ),
-                      child: Text(q, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.unesaBlue)),
+                      child: Text(
+                        q,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.unesaBlue,
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -300,7 +529,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         borderRadius: BorderRadius.circular(99),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     style: const TextStyle(fontSize: 14),
                   ),
@@ -309,9 +541,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 GestureDetector(
                   onTap: () => _sendMessage(_inputController.text),
                   child: Container(
-                    width: 44, height: 44,
-                    decoration: const BoxDecoration(color: AppColors.unesaBlue, shape: BoxShape.circle),
-                    child: const Icon(Icons.send, size: 18, color: Colors.white),
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: AppColors.unesaBlue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.send,
+                      size: 18,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
