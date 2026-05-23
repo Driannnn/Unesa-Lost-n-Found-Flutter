@@ -96,8 +96,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 BoxShadow(color: Colors.black26, blurRadius: 16),
                               ],
                             ),
-                            child: const Center(
-                              child: Text('🎓', style: TextStyle(fontSize: 48)),
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/images/logo_unesa.png',
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                             ),
                           ),
                         ],
