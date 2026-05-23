@@ -233,9 +233,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             children: [
                               Row(
                                 children: [
-                                  Text(
-                                    _adminName,
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                                  Flexible(
+                                    child: Text(
+                                      _adminName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                                    ),
                                   ),
                                   const SizedBox(width: 4),
                                   const Icon(Icons.shield, size: 16, color: AppColors.unesaGold),
@@ -243,6 +247,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ),
                               Text(
                                 '$_adminRole · PSDKU Magetan',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6)),
                               ),
                             ],
@@ -413,7 +419,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.8,
+          childAspectRatio: 1.55,
           children: [
             _kpiTile('Total Laporan', '${claimsList.length}', Icons.inventory_2, AppColors.unesaBlue, AppColors.unesaLightBlue,
               onTap: () => setState(() { _activeTab = 'claims'; _claimFilter = 'all'; }),
@@ -481,13 +487,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: Icon(icon, size: 20, color: color),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: color)),
-                Text(label, style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: color),
+                  ),
+                  Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -644,7 +662,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             children: [
                               const Icon(Icons.person, size: 12, color: AppColors.mutedText),
                               const SizedBox(width: 4),
-                              Text('${claim['reporter']} · ${claim['nim']}', style: const TextStyle(fontSize: 12, color: AppColors.mutedText), overflow: TextOverflow.ellipsis),
+                              Expanded(
+                                child: Text(
+                                  '${claim['reporter']} · ${claim['nim']}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 2),
@@ -652,7 +677,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             children: [
                               const Icon(Icons.location_on, size: 12, color: AppColors.mutedText),
                               const SizedBox(width: 4),
-                              Text(claim['location'] as String, style: const TextStyle(fontSize: 12, color: AppColors.mutedText)),
+                              Expanded(
+                                child: Text(
+                                  claim['location'] as String,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 2),

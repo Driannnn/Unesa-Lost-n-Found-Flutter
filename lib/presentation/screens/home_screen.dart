@@ -96,28 +96,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Lost & Found',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Lost & Found',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Halo, $userName 👋',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
+                          const SizedBox(height: 2),
+                          Text(
+                            'Halo, $userName 👋',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         GestureDetector(
                           onTap: () async {
@@ -303,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                         final annDocs = annSnap.data!.docs;
                         return SizedBox(
-                          height: 64,
+                          height: 80,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: annDocs.length,

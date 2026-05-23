@@ -75,6 +75,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -84,248 +85,250 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              // Back
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Row(
-                    children: [
-                      Icon(Icons.chevron_left, size: 20, color: Colors.white.withOpacity(0.7)),
-                      const SizedBox(width: 4),
-                      Text('Kembali ke Login Mahasiswa',
-                          style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7))),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Logo + info
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              children: [
+                // Back
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Row(
                       children: [
-                        // Logo with shield
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: 104, height: 104,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.unesaGold.withOpacity(0.3), width: 2),
-                              ),
-                            ),
-                            Positioned(
-                              left: 4, top: 4,
-                              child: Container(
-                                width: 96, height: 96,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 16)],
-                                ),
-                                child: const Center(child: Text('🎓', style: TextStyle(fontSize: 40))),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: -4, right: -4,
-                              child: Container(
-                                width: 36, height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppColors.unesaGold,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
-                                ),
-                                child: const Icon(Icons.shield, size: 16, color: AppColors.unesaBlue),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        const Text('Portal Admin',
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
-                        const SizedBox(height: 4),
-                        const Text('UNESA Lost & Found · PSDKU Magetan',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.unesaGold)),
-                        const SizedBox(height: 4),
-                        Text('Akses khusus petugas keamanan & admin kampus',
-                            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
-                        const SizedBox(height: 16),
-                        // Role badges
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: _accounts.map((a) => Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.shield, size: 12, color: AppColors.unesaGold),
-                                    const SizedBox(width: 6),
-                                    Text(a['role']!,
-                                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8))),
-                                  ],
-                                ),
-                              )).toList(),
-                        ),
-                        const SizedBox(height: 32),
+                        Icon(Icons.chevron_left, size: 20, color: Colors.white.withOpacity(0.7)),
+                        const SizedBox(width: 4),
+                        Text('Kembali ke Login Mahasiswa',
+                            style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7))),
                       ],
                     ),
                   ),
                 ),
-              ),
 
-              // ── Form ──
-              Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 16)],
+                // Logo + info
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Logo with shield
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 104, height: 104,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.unesaGold.withOpacity(0.3), width: 2),
+                            ),
+                          ),
+                          Positioned(
+                            left: 4, top: 4,
+                            child: Container(
+                              width: 96, height: 96,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 16)],
+                              ),
+                              child: const Center(child: Text('🎓', style: TextStyle(fontSize: 40))),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: -4, right: -4,
+                            child: Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: AppColors.unesaGold,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
+                              ),
+                              child: const Icon(Icons.shield, size: 16, color: AppColors.unesaBlue),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      const Text('Portal Admin',
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
+                      const SizedBox(height: 4),
+                      const Text('UNESA Lost & Found · PSDKU Magetan',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.unesaGold)),
+                      const SizedBox(height: 4),
+                      Text('Akses khusus petugas keamanan & admin kampus',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6))),
+                      const SizedBox(height: 16),
+                      // Role badges
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: _accounts.map((a) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.shield, size: 12, color: AppColors.unesaGold),
+                                  const SizedBox(width: 6),
+                                  Text(a['role']!,
+                                      style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8))),
+                                ],
+                              ),
+                            )).toList(),
+                      ),
+                    ],
+                  ),
                 ),
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Masuk sebagai Petugas',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.unesaBlue)),
-                    const SizedBox(height: 20),
-                    // Username
-                    const Text('Username / ID Petugas',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.mutedText)),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _usernameController,
-                      onSubmitted: (_) => _handleLogin(),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.person, size: 16, color: AppColors.mutedText),
-                        hintText: 'Username',
-                        hintStyle: const TextStyle(fontSize: 14),
-                        filled: true,
-                        fillColor: const Color(0xFFF3F4F6),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      ),
-                      style: const TextStyle(fontSize: 14, color: Colors.black),
-                    ),
-                    const SizedBox(height: 16),
-                    // Password
-                    const Text('Password',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.mutedText)),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: !_showPassword,
-                      onSubmitted: (_) => _handleLogin(),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock, size: 16, color: AppColors.mutedText),
-                        suffixIcon: GestureDetector(
-                          onTap: () => setState(() => _showPassword = !_showPassword),
-                          child: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 16, color: AppColors.mutedText),
+
+                // ── Form ──
+                Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 16)],
+                  ),
+                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Masuk sebagai Petugas',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.unesaBlue)),
+                      const SizedBox(height: 20),
+                      // Username
+                      const Text('Username / ID Petugas',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.mutedText)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _usernameController,
+                        onSubmitted: (_) => _handleLogin(),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.person, size: 16, color: AppColors.mutedText),
+                          hintText: 'Username',
+                          hintStyle: const TextStyle(fontSize: 14),
+                          filled: true,
+                          fillColor: const Color(0xFFF3F4F6),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         ),
-                        hintText: 'Password',
-                        hintStyle: const TextStyle(fontSize: 14),
-                        filled: true,
-                        fillColor: const Color(0xFFF3F4F6),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        style: const TextStyle(fontSize: 14, color: Colors.black),
                       ),
-                      style: const TextStyle(fontSize: 14, color: Colors.black),
-                    ),
-                    if (_error != null) ...[
+                      const SizedBox(height: 16),
+                      // Password
+                      const Text('Password',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.mutedText)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: !_showPassword,
+                        onSubmitted: (_) => _handleLogin(),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.lock, size: 16, color: AppColors.mutedText),
+                          suffixIcon: GestureDetector(
+                            onTap: () => setState(() => _showPassword = !_showPassword),
+                            child: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 16, color: AppColors.mutedText),
+                          ),
+                          hintText: 'Password',
+                          hintStyle: const TextStyle(fontSize: 14),
+                          filled: true,
+                          fillColor: const Color(0xFFF3F4F6),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        ),
+                        style: const TextStyle(fontSize: 14, color: Colors.black),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            border: Border.all(color: const Color(0xFFFECACA)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(_error!, style: const TextStyle(fontSize: 12, color: AppColors.danger)),
+                        ),
+                      ],
                       const SizedBox(height: 12),
+                      // Demo credentials
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          border: Border.all(color: const Color(0xFFFECACA)),
+                          color: AppColors.unesaLightBlue,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(_error!, style: const TextStyle(fontSize: 12, color: AppColors.danger)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Demo credentials:',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.unesaBlue)),
+                            const SizedBox(height: 4),
+                            ..._accounts.map((a) => GestureDetector(
+                                  onTap: () {
+                                    _usernameController.text = a['username']!;
+                                    _passwordController.text = a['password']!;
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 2),
+                                    child: Text(
+                                      '→ ${a['username']} / ${a['password']} (${a['role']})',
+                                      style: TextStyle(fontSize: 12, color: AppColors.unesaBlue.withOpacity(0.7)),
+                                    ),
+                                  ),
+                                )),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          icon: _isLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.shield, size: 16),
+                          label: Text(
+                            _isLoading ? 'Memverifikasi...' : 'Masuk ke Portal Admin',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.unesaBlue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Center(
+                        child: Text('Akses ini terbatas untuk petugas yang berwenang',
+                            style: TextStyle(fontSize: 12, color: AppColors.mutedText)),
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    // Demo credentials
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.unesaLightBlue,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Demo credentials:',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.unesaBlue)),
-                          const SizedBox(height: 4),
-                          ..._accounts.map((a) => GestureDetector(
-                                onTap: () {
-                                  _usernameController.text = a['username']!;
-                                  _passwordController.text = a['password']!;
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    '→ ${a['username']} / ${a['password']} (${a['role']})',
-                                    style: TextStyle(fontSize: 12, color: AppColors.unesaBlue.withOpacity(0.7)),
-                                  ),
-                                ),
-                              )),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _handleLogin,
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.shield, size: 16),
-                        label: Text(
-                          _isLoading ? 'Memverifikasi...' : 'Masuk ke Portal Admin',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.unesaBlue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Center(
-                      child: Text('Akses ini terbatas untuk petugas yang berwenang',
-                          style: TextStyle(fontSize: 12, color: AppColors.mutedText)),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

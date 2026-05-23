@@ -1,4 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -9,23 +11,46 @@ class AuthService {
   // Stream untuk mendengarkan perubahan status auth
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Fungsi Login menggunakan Google Sign-In (Firebase Popup untuk Web)
+  // Fungsi Login menggunakan Google Sign-In (platform-aware: popup di Web, native di Mobile)
   Future<User?> signInWithGoogle() async {
     try {
-      // Membuat provider Google
-      GoogleAuthProvider googleProvider = GoogleAuthProvider();
+      UserCredential result;
 
-      // Menambahkan scope untuk mendapatkan email dan profil
-      googleProvider.addScope('email');
-      googleProvider.addScope('profile');
+      if (kIsWeb) {
+        // Web: pakai signInWithPopup
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+        googleProvider.setCustomParameters({
+          'prompt': 'select_account',
+        });
 
-      // Memaksa pilih akun setiap kali login
-      googleProvider.setCustomParameters({
-        'prompt': 'select_account',
-      });
+        result = await _auth.signInWithPopup(googleProvider);
+      } else {
+        // Mobile (Android/iOS): pakai package google_sign_in lalu sign in dengan credential
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+        );
 
-      // Melakukan sign in dengan popup (untuk Web)
-      UserCredential result = await _auth.signInWithPopup(googleProvider);
+        // Memaksa pilih akun setiap kali login
+        await googleSignIn.signOut();
+
+        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          // User membatalkan dialog pemilihan akun
+          throw 'Login dibatalkan oleh pengguna.';
+        }
+
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+
+        final OAuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        result = await _auth.signInWithCredential(credential);
+      }
 
       print('Google Sign-In berhasil: ${result.user?.email}');
       return result.user;
@@ -37,10 +62,14 @@ class AuthService {
         throw 'Login dibatalkan oleh pengguna.';
       } else if (e.code == 'cancelled-popup-request') {
         throw 'Permintaan popup dibatalkan.';
+      } else if (e.code == 'invalid-credential') {
+        throw 'Credential Google tidak valid.';
       }
       throw 'Gagal login dengan Google: ${e.message}';
     } catch (e) {
       print('Error Google Sign-In: $e');
+      // Re-throw pesan yang sudah ramah user
+      if (e is String) rethrow;
       throw 'Terjadi kesalahan saat login dengan Google. Coba lagi.';
     }
   }

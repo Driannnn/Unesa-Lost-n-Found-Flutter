@@ -99,27 +99,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Dashboard Statistik',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Dashboard Statistik',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Monitor tren & titik rawan kehilangan',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white70,
+                              SizedBox(height: 2),
+                              Text(
+                                'Monitor tren & titik rawan kehilangan',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         _buildLiveBadge(),
                       ],
                     ),
@@ -141,7 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 1.5,
+                      childAspectRatio: 1.05,
                       children: [
                         _kpiCard(
                           'Total Laporan',
@@ -324,6 +331,7 @@ const SizedBox(height: 16),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -344,24 +352,39 @@ const SizedBox(height: 16),
             ),
           ],
         ),
-        const Spacer(),
+        const SizedBox(height: 8),
         Text(
           value,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: AppColors.mutedText),
-        ),
-        Text(
-          sub,
-          style: TextStyle(fontSize: 12, color: color.withOpacity(0.7)),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: color,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.mutedText,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          sub,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11,
+            color: color.withOpacity(0.7),
+            height: 1.2,
+          ),
         ),
       ],
     ),
@@ -479,11 +502,11 @@ const SizedBox(height: 16),
         .length;
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 8), // Jarak atas
         SizedBox(
-          width: 90, // Ukuran donat diperbesar sedikit karena tidak ada teks
-          height: 90,
+          width: 78,
+          height: 78,
           child: CustomPaint(
             painter: MultiColorDonutPainter(
               kembali: kembali,
@@ -493,12 +516,11 @@ const SizedBox(height: 16),
             ),
           ),
         ),
-        const SizedBox(height: 20), // Jarak antara donat dan keterangan
-        // Teks disesuaikan dengan gambar Anda
+        const SizedBox(height: 10),
         _statusRow(AppColors.success, 'Berhasil Kembali', kembali),
         _statusRow(AppColors.danger, 'Masih Dicari', dicari),
         _statusRow(AppColors.unesaGold, 'Proses Verifikasi', verifikasi),
-        _statusRow(Colors.blue, 'Temuan Tidak Diklaim', tidakDiklaim),
+        _statusRow(Colors.blue, 'Tidak Diklaim', tidakDiklaim),
       ],
     );
   }
@@ -709,14 +731,14 @@ const SizedBox(height: 16),
                   ),
                   const SizedBox(height: 12),
                   
-                  // Legend (Keterangan Warna)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Legend (Keterangan Warna) - pakai Wrap agar tidak overflow di layar sempit
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       _legendDot(AppColors.danger, 'Rawan Tinggi'),
-                      const SizedBox(width: 12),
                       _legendDot(AppColors.unesaGold, 'Rawan Sedang'),
-                      const SizedBox(width: 12),
                       _legendDot(AppColors.success, 'Rawan Rendah'),
                     ],
                   ),
@@ -754,7 +776,7 @@ const SizedBox(height: 16),
                     children: [
                       // Nomor
                       SizedBox(
-                        width: 24,
+                        width: 20,
                         child: Text('${index + 1}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
                       ),
                       // Nama Lokasi
@@ -766,20 +788,22 @@ const SizedBox(height: 16),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 4),
                       // Panah Merah (Hilang)
                       Text('↑$lost', style: const TextStyle(fontSize: 11, color: AppColors.danger)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       // Panah Hijau (Temuan)
                       Text('↓$found', style: const TextStyle(fontSize: 11, color: AppColors.success)),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       // Badge Rawan
                       Container(
-                        width: 80,
                         alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(12)),
                         child: Text(
                           level,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 9, color: badgeCol, fontWeight: FontWeight.bold),
                         ),
                       ),

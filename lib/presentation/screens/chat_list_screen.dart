@@ -54,26 +54,35 @@ class _ChatListScreenState extends State<ChatListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Chat',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Chat',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Percakapan dengan penemu / pencari barang',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
-                      ],
+                          SizedBox(height: 2),
+                          Text(
+                            'Percakapan dengan penemu / pencari barang',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(

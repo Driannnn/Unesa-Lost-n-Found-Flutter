@@ -136,11 +136,12 @@ class _ChatScreenState extends State<ChatScreen> {
                               Expanded(
                                 child: Text(
                                   _reportTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -153,6 +154,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           Text(
                             'Chat Anonim · Terverifikasi',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.white.withOpacity(0.6),
@@ -189,8 +192,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: const [
+                      const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Icon(
                             Icons.access_time,
                             size: 16,
@@ -207,21 +211,26 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.unesaGold.withOpacity(0.13),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: const Text(
-                          'Menunggu Verifikasi Admin',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.unesaGold,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.unesaGold.withOpacity(0.13),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: const Text(
+                            'Menunggu Verifikasi Admin',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.unesaGold,
+                            ),
                           ),
                         ),
                       ),
