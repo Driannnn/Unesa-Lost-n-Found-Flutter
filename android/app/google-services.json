@@ -12,7 +12,12 @@
           "package_name": "Unesa.lostnfound_"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "854277919262-0ev3l8bd8o3toao372f9g8kbt3vt7fq8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC8NPsY5w_VCF-T1Lo1r6Amj3AE5mcyCTA"
@@ -20,7 +25,49 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "854277919262-0ev3l8bd8o3toao372f9g8kbt3vt7fq8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:854277919262:android:2e8294a3d3cfcad066540f",
+        "android_client_info": {
+          "package_name": "com.example.lostnfoundunesa5"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "854277919262-3le9f040qols4rgodom9hri9co9mlsd2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.lostnfoundunesa5",
+            "certificate_hash": "1cf61c1006c29c75975e1d1a2e0db7023d34ae6b"
+          }
+        },
+        {
+          "client_id": "854277919262-0ev3l8bd8o3toao372f9g8kbt3vt7fq8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8NPsY5w_VCF-T1Lo1r6Amj3AE5mcyCTA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "854277919262-0ev3l8bd8o3toao372f9g8kbt3vt7fq8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
