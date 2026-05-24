@@ -197,24 +197,30 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 16,
-                            color: AppColors.unesaGold,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Status Klaim',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                      const Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: 16,
                               color: AppColors.unesaGold,
                             ),
-                          ),
-                        ],
+                            SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Status Klaim',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.unesaGold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Flexible(
@@ -295,11 +301,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     color: AppColors.unesaBlue,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Chat anonim · Identitas terlindungi · Koordinasi via pos keamanan',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.unesaBlue.withOpacity(0.7),
+                  Expanded(
+                    child: Text(
+                      'Chat anonim · Identitas terlindungi · Koordinasi via pos keamanan',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.unesaBlue.withOpacity(0.7),
+                      ),
                     ),
                   ),
                 ],

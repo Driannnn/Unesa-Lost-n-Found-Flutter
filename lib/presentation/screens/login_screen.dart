@@ -182,9 +182,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               )
                             : const Icon(Icons.login, size: 20),
-                        label: Text(
-                          _isGoogleLoading ? 'Menghubungkan...' : 'Login with SSO UNESA',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        label: Flexible(
+                          child: Text(
+                            _isGoogleLoading
+                                ? 'Menghubungkan...'
+                                : 'Login with SSO UNESA',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.unesaBlue,
@@ -202,12 +211,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       onTap: () => setState(() => _showManual = !_showManual),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.person, size: 14, color: AppColors.mutedText),
                           const SizedBox(width: 6),
-                          const Text(
-                            'Login Manual dengan NIM',
-                            style: TextStyle(fontSize: 12, color: AppColors.mutedText),
+                          const Flexible(
+                            child: Text(
+                              'Login Manual dengan NIM',
+                              style: TextStyle(fontSize: 12, color: AppColors.mutedText),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           const SizedBox(width: 4),
                           Icon(
@@ -366,12 +379,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       onTap: () => Navigator.pushNamed(context, '/admin-login'),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.shield, size: 14, color: AppColors.mutedText),
                           SizedBox(width: 6),
-                          Text(
-                            'Portal Admin / Satpam',
-                            style: TextStyle(fontSize: 12, color: AppColors.mutedText),
+                          Flexible(
+                            child: Text(
+                              'Portal Admin / Satpam',
+                              style: TextStyle(fontSize: 12, color: AppColors.mutedText),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
