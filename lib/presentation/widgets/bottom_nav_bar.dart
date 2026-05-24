@@ -5,11 +5,13 @@ import 'app_colors.dart';
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final int unreadChatCount;
 
   const BottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.unreadChatCount = 0,
   });
 
   @override
@@ -37,6 +39,8 @@ class BottomNavBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(items.length, (i) {
           final isActive = currentIndex == i;
+          final bool showBadge = i == 2 && unreadChatCount > 0;
+
           return GestureDetector(
             onTap: () => onTap(i),
             behavior: HitTestBehavior.opaque,
@@ -52,12 +56,54 @@ class BottomNavBar extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    items[i].icon,
-                    size: 20,
-                    color: isActive
-                        ? AppColors.unesaBlue
-                        : AppColors.lightMuted,
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(
+                        items[i].icon,
+                        size: 20,
+                        color: isActive
+                            ? AppColors.unesaBlue
+                            : AppColors.lightMuted,
+                      ),
+                      // Badge notifikasi chat baru
+                      if (showBadge)
+                        Positioned(
+                          top: -6,
+                          right: -10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.danger,
+                              borderRadius: BorderRadius.circular(99),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 14,
+                            ),
+                            child: Text(
+                              unreadChatCount > 9
+                                  ? '9+'
+                                  : '$unreadChatCount',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(

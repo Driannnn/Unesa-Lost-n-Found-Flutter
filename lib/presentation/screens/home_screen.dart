@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // WAJIB DITAMBAHKAN
-import 'package:firebase_auth/firebase_auth.dart'; // Untuk fitur Logout
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/item_card_widget.dart';
 import '../widgets/stat_card_widget.dart';
+import '../../data/service/chat_service.dart';
 
 /// Home screen with feed, stats, search, and filters.
 class HomeScreen extends StatefulWidget {
@@ -17,11 +18,17 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _filter = 'all'; // all | lost | found
   final _searchController = TextEditingController();
-
-  // Instance Firestore
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Stream<QuerySnapshot> _reportsStream;
   late Stream<QuerySnapshot> _announcementsStream;
+  int _unreadChatCount = 0;
+  final ChatService _chatService = ChatService();
+
+  String get _currentUserId {
+    final user = FirebaseAuth.instance.currentUser;
+    return user?.email?.split('@')[0] ?? user?.uid ?? '';
+  }
+
   static const _categoryIcons = {
     'Dompet': '👛',
     'Tas': '🎒',
@@ -38,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Menyalakan stream satu kali saja saat layar pertama kali dimuat
     _reportsStream = _firestore
         .collection('reports')
         .orderBy('createdAt', descending: true)
@@ -47,6 +53,13 @@ class _HomeScreenState extends State<HomeScreen> {
         .collection('announcements')
         .where('pinned', isEqualTo: true)
         .snapshots();
+    // Listen unread chat count
+    final userId = _currentUserId;
+    if (userId.isNotEmpty) {
+      _chatService.getUnreadChatCount(userId).listen((c) {
+        if (mounted) setState(() => _unreadChatCount = c);
+      });
+    }
   }
 
   @override
@@ -567,6 +580,7 @@ return ItemCardWidget(
           // ── Bottom nav ──
           BottomNavBar(
             currentIndex: 0,
+            unreadChatCount: _unreadChatCount,
             onTap: (i) {
               if (i == 1) Navigator.pushReplacementNamed(context, '/dashboard');
               if (i == 2) Navigator.pushNamed(context, '/chat');

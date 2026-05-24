@@ -15,11 +15,23 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _chatService = ChatService();
+  int _unreadChatCount = 0;
 
   // Menggunakan NIM, bukan UID
   String get _currentUserId {
     final user = FirebaseAuth.instance.currentUser;
     return user?.email?.split('@')[0] ?? user?.uid ?? '';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final userId = _currentUserId;
+    if (userId.isNotEmpty) {
+      _chatService.getUnreadChatCount(userId).listen((c) {
+        if (mounted) setState(() => _unreadChatCount = c);
+      });
+    }
   }
 
   String _formatTimeAgo(Timestamp? timestamp) {
@@ -207,6 +219,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                   as Map<String, dynamic>? ??
                               {};
 
+                          // Cek apakah chat ini belum dibaca
+                          final lastMessageTime =
+                              data['lastMessageTime'] as Timestamp?;
+                          final lastReadBy =
+                              data['lastReadBy']
+                                  as Map<String, dynamic>? ??
+                              {};
+                          final lastRead =
+                              lastReadBy[userId] as Timestamp?;
+                          final bool isUnread = lastMessage.isNotEmpty &&
+                              lastMessageTime != null &&
+                              (lastRead == null ||
+                                  lastMessageTime.compareTo(lastRead) > 0);
+
                           String otherName = 'Pengguna';
                           for (var entry in participantNames.entries) {
                             if (entry.key != userId) {
@@ -272,17 +298,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                                 reportTitle,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
+                                                style: TextStyle(
+                                                  fontWeight: isUnread
+                                                      ? FontWeight.w700
+                                                      : FontWeight.w600,
                                                   fontSize: 14,
                                                 ),
                                               ),
                                             ),
                                             Text(
                                               _formatTimeAgo(lastTime),
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 11,
-                                                color: AppColors.mutedText,
+                                                color: isUnread
+                                                    ? AppColors.unesaBlue
+                                                    : AppColors.mutedText,
+                                                fontWeight: isUnread
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
                                               ),
                                             ),
                                           ],
@@ -296,20 +329,35 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontSize: 13,
+                                            fontWeight: isUnread
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
                                             color: lastMessage.isEmpty
                                                 ? AppColors.lightMuted
-                                                : AppColors.mutedText,
+                                                : isUnread
+                                                    ? AppColors.unesaBlue
+                                                    : AppColors.mutedText,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: 20,
-                                    color: AppColors.lightMuted,
-                                  ),
+                                  if (isUnread)
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.unesaBlue,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    )
+                                  else
+                                    const Icon(
+                                      Icons.chevron_right,
+                                      size: 20,
+                                      color: AppColors.lightMuted,
+                                    ),
                                 ],
                               ),
                             ),
@@ -323,6 +371,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           // ── Bottom nav ──
           BottomNavBar(
             currentIndex: 2,
+            unreadChatCount: _unreadChatCount,
             onTap: (i) {
               if (i == 0) Navigator.pushReplacementNamed(context, '/home');
               if (i == 1) Navigator.pushReplacementNamed(context, '/dashboard');

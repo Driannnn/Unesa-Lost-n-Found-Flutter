@@ -20,6 +20,11 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   Map<String, dynamic>? _bestMatch;
   Map<String, dynamic> _currentReport = {};
 
+  String get _currentUserId {
+    final user = FirebaseAuth.instance.currentUser;
+    return user?.email?.split('@')[0] ?? user?.uid ?? '';
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -79,6 +84,52 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       'Lainnya': '📦',
     };
     return icons[category] ?? '📦';
+  }
+
+  /// Memulai chat dengan user lain
+  Future<void> _startChat({
+    required String otherUserId,
+    required String otherUserName,
+    required String reportId,
+    required String reportTitle,
+  }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final chatService = ChatService();
+    final currentUserId =
+        currentUser.email?.split('@')[0] ?? currentUser.uid;
+    final currentUserName =
+        currentUser.displayName ??
+        currentUser.email?.split('@')[0] ??
+        'Anonim';
+
+    final chatRoomId = await chatService.getOrCreateChatRoom(
+      currentUserId: currentUserId,
+      otherUserId: otherUserId,
+      reportId: reportId,
+      reportTitle: reportTitle,
+      currentUserName: currentUserName,
+      otherUserName: otherUserName,
+    );
+
+    if (mounted) {
+      Navigator.pushNamed(
+        context,
+        '/chat-room',
+        arguments: {
+          'chatRoomId': chatRoomId,
+          'reportTitle': reportTitle,
+          'otherUserName': otherUserName,
+        },
+      );
+    }
+  }
+
+  /// Cek apakah pelapor barang ini adalah user yg sedang login
+  bool get _isOwnReport {
+    final reporterNim = _currentReport['reporterNim'] ?? '';
+    return reporterNim == _currentUserId;
   }
 
   @override
@@ -203,99 +254,145 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
           ),
 
           // ── Bottom CTA ──
-          if (!_isScanning && _bestMatch != null)
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Color(0xFFE0E0E0))),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 12,
-                    offset: Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final currentUser = FirebaseAuth.instance.currentUser;
-                        if (currentUser == null) return;
-
-                        final chatService = ChatService();
-                        // PERBAIKAN: Menggunakan NIM, bukan UID
-                        final currentUserId =
-                            currentUser.email?.split('@')[0] ?? currentUser.uid;
-                        final currentUserName =
-                            currentUser.displayName ??
-                            currentUser.email?.split('@')[0] ??
-                            'Anonim';
-
-                        final otherUserId =
-                            _bestMatch!['reporterNim'] ?? 'unknown';
-                        final otherUserName =
-                            _bestMatch!['reporterName'] ??
-                            _bestMatch!['reporterNim'] ??
-                            'Penemu';
-                        final reportId = _currentReport['id'] ?? '';
-                        final reportTitle = _currentReport['title'] ?? 'Barang';
-
-                        final chatRoomId = await chatService
-                            .getOrCreateChatRoom(
-                              currentUserId: currentUserId,
-                              otherUserId: otherUserId,
-                              reportId: reportId,
-                              reportTitle: reportTitle,
-                              currentUserName: currentUserName,
-                              otherUserName: otherUserName,
-                            );
-
-                        if (mounted) {
-                          Navigator.pushNamed(
-                            context,
-                            '/chat-room',
-                            arguments: {
-                              'chatRoomId': chatRoomId,
-                              'reportTitle': reportTitle,
-                              'otherUserName': otherUserName,
-                            },
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.chat_bubble, size: 20),
-                      label: Text(
-                        'Chat dengan ${_bestMatch!['reporterNim'] ?? 'Penemu'}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.unesaBlue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Diskusikan lokasi dan waktu pertemuan',
-                    style: TextStyle(fontSize: 12, color: AppColors.mutedText),
-                  ),
-                ],
-              ),
-            ),
+          // Tampilkan tombol chat BAIK ada match MAUPUN tidak ada match
+          if (!_isScanning) _buildBottomCTA(),
           SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
+  }
+
+  /// Bottom CTA — tombol chat
+  Widget _buildBottomCTA() {
+    // Jika ada match → chat ke penemu/pencari match
+    if (_bestMatch != null) {
+      final otherUserId = _bestMatch!['reporterNim'] ?? 'unknown';
+      final otherUserName =
+          _bestMatch!['reporterName'] ??
+          _bestMatch!['reporterNim'] ??
+          'Penemu';
+      final reportId = _currentReport['id'] ?? '';
+      final reportTitle = _currentReport['title'] ?? 'Barang';
+      final isLost = _currentReport['status'] == 'lost';
+
+      return Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE0E0E0))),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 12,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: () => _startChat(
+                  otherUserId: otherUserId,
+                  otherUserName: otherUserName,
+                  reportId: reportId,
+                  reportTitle: reportTitle,
+                ),
+                icon: const Icon(Icons.chat_bubble, size: 20),
+                label: Text(
+                  'Chat dengan ${isLost ? 'Penemu' : 'Pemilik'} ($otherUserName)',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.unesaBlue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '✨ Match ditemukan! Diskusikan lokasi dan waktu pertemuan',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.success,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Jika TIDAK ada match → chat ke pelapor barang ini (jika bukan diri sendiri)
+    if (!_isOwnReport) {
+      final reporterNim = _currentReport['reporterNim'] ?? 'Anonim';
+      final reporterName = _currentReport['reporterName'] ??
+          _currentReport['reporterNim'] ?? 'Anonim';
+      final reportId = _currentReport['id'] ?? '';
+      final reportTitle = _currentReport['title'] ?? 'Barang';
+
+      return Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE0E0E0))),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 12,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: () => _startChat(
+                  otherUserId: reporterNim,
+                  otherUserName: reporterName,
+                  reportId: reportId,
+                  reportTitle: reportTitle,
+                ),
+                icon: const Icon(Icons.person, size: 20),
+                label: Text(
+                  'Hubungi Pelapor ($reporterName)',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.unesaBlue.withOpacity(0.85),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Hubungi pelapor untuk informasi lebih lanjut',
+              style: TextStyle(fontSize: 12, color: AppColors.mutedText),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Jika ini laporan sendiri → tidak perlu tombol chat
+    return const SizedBox.shrink();
   }
 
   Widget _buildHeroContent() {
@@ -488,35 +585,98 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
         ),
       ];
     }
+
+    // ════════════════════════════════════════════════
+    // TIDAK ADA MATCH — Tampilan khusus
+    // ════════════════════════════════════════════════
     if (_bestMatch == null) {
       return [
         Container(
           padding: const EdgeInsets.all(32),
           alignment: Alignment.center,
           child: Column(
-            children: const [
-              Icon(Icons.search_off, size: 64, color: AppColors.lightMuted),
-              SizedBox(height: 16),
-              Text(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.bgLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.search_off,
+                  size: 40,
+                  color: AppColors.lightMuted,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
                 'Tidak Ada Data Pembanding',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.mutedText,
                 ),
               ),
-              SizedBox(height: 8),
-              Text(
-                'Belum ada laporan lawan yang cocok dengan kriteria barang ini di database.',
+              const SizedBox(height: 8),
+              const Text(
+                'Belum ada laporan lawan yang cocok dengan\nkriteria dan kategori barang ini di database.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppColors.lightMuted),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        // Card info — bisa hubungi pelapor
+        if (!_isOwnReport)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.unesaLightBlue,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.unesaBlue.withOpacity(0.15),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline, size: 20, color: AppColors.unesaBlue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ingin menanyakan barang ini?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppColors.unesaBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Meskipun belum ada kecocokan otomatis, Anda tetap bisa menghubungi pelapor (${_currentReport['reporterName'] ?? _currentReport['reporterNim'] ?? 'Anonim'}) untuk verifikasi manual.',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.mutedText,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
       ];
     }
 
+    // ════════════════════════════════════════════════
+    // ADA MATCH — Tampilkan perbandingan visual
+    // ════════════════════════════════════════════════
     final isLost = _currentReport['status'] == 'lost';
     final currentLabel = isLost ? 'Barang Anda' : 'Temuan Anda';
     final matchLabel = isLost ? 'Potensi Ditemukan' : 'Potensi Pemilik';
@@ -585,7 +745,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Ditemukan kemiripan dengan laporan atas nama "${_bestMatch!['reporterNim'] ?? 'Anonim'}".\n\n• Kategori: ${_bestMatch!['category']}\n• Lokasi: ${_bestMatch!['location']}\n\nSkor kecocokan mencapai ${_bestMatch!['matchScore']}%. Silakan gunakan fitur chat untuk verifikasi lebih lanjut.',
+                    'Ditemukan kemiripan dengan laporan atas nama "${_bestMatch!['reporterName'] ?? _bestMatch!['reporterNim'] ?? 'Anonim'}".\n\n• Kategori: ${_bestMatch!['category']}\n• Lokasi: ${_bestMatch!['location']}\n\nSkor kecocokan mencapai ${_bestMatch!['matchScore']}%. Silakan gunakan fitur chat untuk verifikasi lebih lanjut.',
                     style: const TextStyle(
                       fontSize: 14,
                       color: AppColors.mutedText,

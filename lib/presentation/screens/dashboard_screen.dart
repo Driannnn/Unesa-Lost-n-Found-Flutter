@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../../data/service/chat_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,12 +17,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Stream<QuerySnapshot> _reportsStream;
   int? _hoveredIndex;
+  int _unreadChatCount = 0;
+  final ChatService _chatService = ChatService();
+
+  String get _currentUserId {
+    final user = FirebaseAuth.instance.currentUser;
+    return user?.email?.split('@')[0] ?? user?.uid ?? '';
+  }
 
   @override
   void initState() {
     super.initState();
-    // Mengunci aliran data agar tidak refresh saat pindah tab periode
     _reportsStream = _firestore.collection('reports').snapshots();
+    // Listen unread chat count
+    final userId = _currentUserId;
+    if (userId.isNotEmpty) {
+      _chatService.getUnreadChatCount(userId).listen((c) {
+        if (mounted) setState(() => _unreadChatCount = c);
+      });
+    }
   }
 
   @override
@@ -247,6 +262,7 @@ const SizedBox(height: 16),
 
               BottomNavBar(
                 currentIndex: 1,
+                unreadChatCount: _unreadChatCount,
                 onTap: (i) {
                   if (i == 0) Navigator.pushReplacementNamed(context, '/home');
                   if (i == 2) Navigator.pushNamed(context, '/chat');
@@ -893,28 +909,26 @@ const SizedBox(height: 16),
     // Generate list log gabungan (Laporan Baru & Match AI)
     List<Map<String, dynamic>> logs = [];
     for (var d in sortedDocs) {
-      if (logs.length >= 6) break; // Maksimal 6 log
+      if (logs.length >= 8) break; // Maksimal 8 log
 
-      bool isLost = d['isLost'] == true;
+      final data = d.data() as Map<String, dynamic>;
+      bool isLost = data['isLost'] == true;
       String type = isLost ? 'hilang' : 'temuan';
-      String title = d['title'] ?? 'Barang';
-      DateTime dt = (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+      String title = data['title'] ?? 'Barang';
+      DateTime dt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
-      // Cek apakah ada barang dengan kategori sama (Simulasi Match AI)
-      bool hasMatch = docs.any((other) => other.id != d.id && other['isLost'] != isLost && other['category'] == d['category']);
-
-      if (hasMatch && logs.length < 6) {
-        // Angka persentase AI dinamis (pseudo-random berdasarkan panjang judul agar konsisten)
-        int aiScore = 85 + (title.length % 11); 
+      // Hanya tampilkan Match AI jika ada skor ASLI yang tersimpan di Firestore
+      final savedScore = data['score'];
+      if (savedScore != null && savedScore is int && savedScore > 0 && logs.length < 8) {
         logs.add({
-          'title': 'Match AI $aiScore%',
+          'title': 'Match AI $savedScore%',
           'subtitle': title,
           'time': _timeAgo(dt),
           'isMatch': true,
         });
       }
 
-      if (logs.length < 6) {
+      if (logs.length < 8) {
         logs.add({
           'title': 'Laporan baru ($type)',
           'subtitle': title,

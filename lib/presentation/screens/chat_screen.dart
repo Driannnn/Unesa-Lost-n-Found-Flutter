@@ -45,6 +45,11 @@ class _ChatScreenState extends State<ChatScreen> {
       _chatRoomId = args['chatRoomId'] ?? '';
       _reportTitle = args['reportTitle'] ?? 'Chat';
       _isInit = false;
+
+      // Tandai chat sebagai sudah dibaca saat membuka chat room
+      if (_chatRoomId.isNotEmpty) {
+        _chatService.markChatAsRead(_chatRoomId, _currentUserId);
+      }
     }
   }
 
@@ -356,6 +361,10 @@ class _ChatScreenState extends State<ChatScreen> {
                           _scrollController.jumpTo(
                             _scrollController.position.maxScrollExtent,
                           );
+                        }
+                        // Tandai sebagai sudah dibaca setiap ada pesan baru masuk
+                        if (_chatRoomId.isNotEmpty) {
+                          _chatService.markChatAsRead(_chatRoomId, _currentUserId);
                         }
                       });
 
