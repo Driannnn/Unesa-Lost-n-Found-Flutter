@@ -41,6 +41,8 @@ dependencies:
   flutter_dotenv: ^6.0.1
   image_picker: ^1.2.2
   google_sign_in: ^6.2.1
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:
@@ -52,6 +54,27 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+
+# Konfigurasi launcher icon. Generate dengan:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/images/logo_unesa.png"
+  remove_alpha_ios: true
+  background_color_ios: "#FFFFFF"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo_unesa.png"
+  web:
+    generate: true
+    image_path: "assets/images/logo_unesa.png"
+    background_color: "#003366"
+    theme_color: "#003366"
+  windows:
+    generate: true
+    image_path: "assets/images/logo_unesa.png"
+    icon_size: 256
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

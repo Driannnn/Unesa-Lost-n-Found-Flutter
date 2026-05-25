@@ -12,7 +12,8 @@ class DatabaseService {
     required bool isLost,
     required String reporterNim,
     String? reporterName, // Nama pelapor
-    String? imageBase64, // <-- Sekarang kita menerima teks Base64, bukan file
+    String? imageBase64, // Teks Base64 dari foto barang
+    GeoPoint? geo, // Titik koordinat tepat dari peta UNESA Magetan
   }) async {
     try {
       await _db.collection('reports').add({
@@ -25,6 +26,7 @@ class DatabaseService {
         'reporterNim': reporterNim,
         'reporterName': reporterName ?? reporterNim, // Simpan nama pelapor
         'imageBase64': imageBase64 ?? '', // Simpan teks panjang fotonya di sini
+        if (geo != null) 'geo': geo, // Koordinat presisi (opsional)
         'status': 'Open',
         'createdAt': FieldValue.serverTimestamp(),
       });

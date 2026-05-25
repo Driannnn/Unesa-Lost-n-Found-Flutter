@@ -1,8 +1,11 @@
 import 'dart:typed_data';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lostnfoundunesa5/data/service/database_service.dart';
 import '../widgets/app_colors.dart';
 
@@ -30,6 +33,11 @@ class _ReportScreenState extends State<ReportScreen> {
   Uint8List? _webImage;
   String? _base64String;
 
+  // Peta interaktif kampus UNESA Magetan
+  static const LatLng _campusCenter = LatLng(-7.586254, 111.436871);
+  final MapController _mapController = MapController();
+  LatLng? _pickedPoint;
+
   static const _categories = [
     'Dompet',
     'Tas',
@@ -56,6 +64,23 @@ class _ReportScreenState extends State<ReportScreen> {
     'Koridor',
     'Lainnya',
   ];
+
+  /// Koordinat default tiap label lokasi di kampus UNESA Magetan.
+  /// Dipakai untuk auto-pin di peta saat user pilih dropdown sebelum
+  /// nge-tap titik manual.
+  static const Map<String, LatLng> _locationCoords = {
+    'Gedung A Lt. 1': LatLng(-7.586100, 111.436700),
+    'Gedung A Lt. 2': LatLng(-7.586130, 111.436730),
+    'Gedung A Lt. 3': LatLng(-7.586160, 111.436760),
+    'Gedung A Lt. 4': LatLng(-7.586190, 111.436790),
+    'Perpustakaan':   LatLng(-7.586400, 111.437000),
+    'Kantin':         LatLng(-7.586500, 111.436500),
+    'Lapangan':       LatLng(-7.585900, 111.437100),
+    'Parkiran Motor': LatLng(-7.586700, 111.436600),
+    'Masjid Kampus':  LatLng(-7.585800, 111.436400),
+    'Koridor':        LatLng(-7.586300, 111.436850),
+    'Lainnya':        LatLng(-7.586254, 111.436871),
+  };
 
   // FUNGSI AMBIL, KOMPRES, DAN KONVERSI GAMBAR
   Future<void> _pickImage(ImageSource source) async {
@@ -112,6 +137,12 @@ class _ReportScreenState extends State<ReportScreen> {
       final nim = user?.email?.split('@')[0] ?? 'Anonim';
       final displayName = user?.displayName ?? nim;
 
+      // Pakai titik yang dipilih user di peta. Kalau belum ada, fallback
+      // ke koordinat default berdasarkan label lokasi yang dipilih.
+      final pickedGeo = _pickedPoint ??
+          _locationCoords[_location] ??
+          _campusCenter;
+
       await _dbService.submitReport(
         title: _nameController.text.trim(),
         description: _descController.text.trim(),
@@ -122,6 +153,7 @@ class _ReportScreenState extends State<ReportScreen> {
         reporterNim: nim,
         reporterName: displayName,
         imageBase64: _base64String, // Kirim teks Base64-nya ke database
+        geo: GeoPoint(pickedGeo.latitude, pickedGeo.longitude),
       );
 
       if (mounted) {
@@ -409,65 +441,190 @@ class _ReportScreenState extends State<ReportScreen> {
                   _dropdown(
                     _locations,
                     _location,
-                    (v) => setState(() => _location = v),
+                    (v) {
+                      setState(() {
+                        _location = v;
+                        // Sinkronkan posisi pin di peta dengan label lokasi
+                        // yang baru dipilih, kecuali user sudah memilih
+                        // titik manual sebelumnya.
+                        final coord = _locationCoords[v];
+                        if (coord != null && _pickedPoint == null) {
+                          _mapController.move(coord, 18);
+                        }
+                      });
+                    },
                     'Pilih lokasi',
                   ),
                   const SizedBox(height: 12),
-                  // Campus map placeholder
-                  Container(
-                    height: 144,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFDBEAFE), Color(0xFFDCFCE7)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                  // Peta interaktif kampus UNESA Magetan
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 220,
+                      child: Stack(
+                        children: [
+                          FlutterMap(
+                            mapController: _mapController,
+                            options: MapOptions(
+                              initialCenter:
+                                  _locationCoords[_location] ?? _campusCenter,
+                              initialZoom: 17,
+                              minZoom: 14,
+                              maxZoom: 19,
+                              onTap: (tapPos, point) {
+                                setState(() => _pickedPoint = point);
+                              },
+                            ),
                             children: [
-                              const Icon(
-                                Icons.location_on,
-                                size: 32,
-                                color: AppColors.unesaBlue,
+                              TileLayer(
+                                urlTemplate:
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName:
+                                    'com.example.lostnfoundunesa5',
+                                maxZoom: 19,
                               ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Peta Kampus UNESA Magetan',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.unesaBlue,
-                                ),
-                              ),
-                              if (_location != null)
-                                Container(
-                                  margin: const EdgeInsets.only(top: 4),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.7),
-                                    borderRadius: BorderRadius.circular(99),
-                                  ),
-                                  child: Text(
-                                    '📍 $_location',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.unesaBlue,
+                              MarkerLayer(
+                                markers: [
+                                  if (_pickedPoint != null)
+                                    Marker(
+                                      point: _pickedPoint!,
+                                      width: 36,
+                                      height: 44,
+                                      alignment: Alignment.topCenter,
+                                      child: const Icon(
+                                        Icons.location_on,
+                                        color: AppColors.danger,
+                                        size: 36,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black54,
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  else if (_location != null &&
+                                      _locationCoords[_location] != null)
+                                    Marker(
+                                      point: _locationCoords[_location]!,
+                                      width: 36,
+                                      height: 44,
+                                      alignment: Alignment.topCenter,
+                                      child: const Icon(
+                                        Icons.location_on,
+                                        color: AppColors.unesaBlue,
+                                        size: 32,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black38,
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                ],
+                              ),
                             ],
                           ),
-                        ),
-                      ],
+                          // Hint banner di atas peta
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.92),
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.touch_app,
+                                    size: 14,
+                                    color: AppColors.unesaBlue,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Expanded(
+                                    child: Text(
+                                      'Tap peta untuk pilih titik tepat',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.unesaBlue,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_pickedPoint != null)
+                                    GestureDetector(
+                                      onTap: () => setState(
+                                          () => _pickedPoint = null),
+                                      child: const Icon(
+                                        Icons.refresh,
+                                        size: 14,
+                                        color: AppColors.danger,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Label pin / koordinat
+                          Positioned(
+                            bottom: 8,
+                            left: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.unesaBlue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      _pickedPoint != null
+                                          ? '${_location ?? "Titik dipilih"} • '
+                                              '${_pickedPoint!.latitude.toStringAsFixed(5)}, '
+                                              '${_pickedPoint!.longitude.toStringAsFixed(5)}'
+                                          : (_location ??
+                                              'Kampus UNESA Magetan'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ]),
