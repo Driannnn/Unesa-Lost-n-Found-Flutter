@@ -183,6 +183,99 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  // Konfirmasi ulang barang yang sebelumnya ditahan
+  Future<void> _confirmReReview(String id, String title, String targetStatus) async {
+    final isApprove = targetStatus == 'approved';
+    final actionLabel = isApprove ? 'Setujui' : 'Tolak';
+    final actionColor = isApprove ? AppColors.success : AppColors.danger;
+    final actionIcon = isApprove ? Icons.check_circle : Icons.cancel;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(actionIcon, color: actionColor, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Konfirmasi $actionLabel',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Klaim ini sebelumnya ditahan. Apakah Anda yakin ingin melanjutkan?',
+              style: TextStyle(fontSize: 13, color: AppColors.mutedText),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.bgLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.inventory_2, size: 16, color: AppColors.unesaBlue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isApprove
+                  ? 'Status akan diubah menjadi "Disetujui".'
+                  : 'Status akan diubah menjadi "Ditolak".',
+              style: TextStyle(fontSize: 12, color: actionColor, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal', style: TextStyle(color: AppColors.mutedText)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: Icon(actionIcon, size: 16),
+            label: Text(actionLabel),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: actionColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _updateDbStatus(id, targetStatus);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: actionColor,
+            content: Text('Klaim "$title" berhasil di${actionLabel.toLowerCase()}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -743,6 +836,70 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           height: 36,
                           child: ElevatedButton(
                             onPressed: () => _updateDbStatus(claim['id'], 'rejected'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.danger, foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: EdgeInsets.zero,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [Icon(Icons.close, size: 14), SizedBox(width: 4), Text('Tolak', style: TextStyle(fontSize: 12))],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (claim['status'] == 'on_hold') ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Color(s['bg'] as int),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.pause_circle_filled, size: 14, color: Color(s['color'] as int)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Klaim ditahan, silakan konfirmasi ulang',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(s['color'] as int),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 36,
+                          child: ElevatedButton(
+                            onPressed: () => _confirmReReview(claim['id'] as String, claim['title'] as String, 'approved'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.success, foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: EdgeInsets.zero,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [Icon(Icons.check, size: 14), SizedBox(width: 4), Text('Setujui', style: TextStyle(fontSize: 12))],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SizedBox(
+                          height: 36,
+                          child: ElevatedButton(
+                            onPressed: () => _confirmReReview(claim['id'] as String, claim['title'] as String, 'rejected'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.danger, foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: EdgeInsets.zero,

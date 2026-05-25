@@ -44,10 +44,10 @@ class _ReportScreenState extends State<ReportScreen> {
   ];
 
   static const _locations = [
-    'Gedung A',
+    'Gedung A Lt. 1',
     'Gedung A Lt. 2',
-    'Gedung B',
-    'Gedung C',
+    'Gedung A Lt. 3',
+    'Gedung A Lt. 4',
     'Perpustakaan',
     'Kantin',
     'Lapangan',

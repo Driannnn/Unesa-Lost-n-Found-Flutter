@@ -142,13 +142,41 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         GestureDetector(
                           onTap: () async {
+                            // Tampilkan dialog konfirmasi dulu agar user tidak
+                            // ter-logout secara tidak sengaja.
+                            final shouldLogout = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Keluar dari akun?'),
+                                content: const Text(
+                                  'Anda akan keluar dari aplikasi dan harus login kembali. Lanjutkan?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Batal'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.danger,
+                                    ),
+                                    child: const Text('Keluar'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (shouldLogout != true) return;
+
                             await FirebaseAuth.instance.signOut();
-                            if (mounted)
+                            if (mounted) {
                               Navigator.pushNamedAndRemoveUntil(
                                 context,
                                 '/',
                                 (route) => false,
                               );
+                            }
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
