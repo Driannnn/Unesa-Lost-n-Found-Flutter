@@ -115,25 +115,36 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     children: [
                       // Logo with shield
                       Stack(
+                        alignment: Alignment.center,
                         clipBehavior: Clip.none,
                         children: [
                           Container(
-                            width: 104, height: 104,
+                            width: 120,
+                            height: 120,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.unesaGold.withOpacity(0.3), width: 2),
+                              border: Border.all(
+                                color: AppColors.unesaGold.withOpacity(0.4),
+                                width: 2,
+                              ),
                             ),
                           ),
-                          Positioned(
-                            left: 4, top: 4,
-                            child: Container(
-                              width: 96, height: 96,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 16)],
+                          Container(
+                            width: 112,
+                            height: 112,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 16)],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/images/logo_unesa.png',
+                                  fit: BoxFit.cover,
+                                ),
                               ),
-                              child: const Center(child: Text('🎓', style: TextStyle(fontSize: 40))),
                             ),
                           ),
                           Positioned(
